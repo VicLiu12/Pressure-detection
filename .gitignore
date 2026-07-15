@@ -216,3 +216,29 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+data/
+datasets/
+Kaggle_Data/
+
+*.pt
+*.pth
+*.onnx
+weights/
+saved_models/
+checkpoints/
+
+runs/
+logs/
+outputs/
+experiments/
+tb_logs/
+
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
