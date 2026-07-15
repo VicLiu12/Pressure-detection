@@ -1,0 +1,13 @@
+system :
+  seed : 42 #亂數種子
+  data_dir : "./data"
+  num_classes : 7 #分類數量
+
+model :
+  name : "resnet50"
+  pretrained : True
+
+train:
+  batch_size : 4
+  learning_rate : 0.0001
+  accumulation_steps : 8 #梯度累積次數
