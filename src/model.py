@@ -1,6 +1,7 @@
 import yaml
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torchvision import models
 from pathlib import Path
 
@@ -32,6 +33,11 @@ class DetectModel(nn.Module):
             self.backbone.layer2.register_forward_hook(self.get_hook('layer2'))
             self.backbone.layer3.register_forward_hook(self.get_hook('layer3'))
             self.backbone.layer4.register_forward_hook(self.get_hook('layer4'))
+            
+            self.fpn_latlayer4 = nn.Conv2d(2048, 256, kernel_size=1)
+            self.fpn_latlayer3 = nn.Conv2d(1024, 256, kernel_size=1)
+            self.fpn_latlayer2 = nn.Conv2d(512, 256, kernel_size=1)
+            self.fpn_latlayer1 = nn.Conv2d(256, 256, kernel_size=1)
         
         else :
             raise ValueError("Model unsupported")
@@ -41,9 +47,33 @@ class DetectModel(nn.Module):
             self.feature_map[layer_name] = output
         return hook_fn
         
-    def forward(self, x):
+    def forward(self, x):      
         classification_result = self.backbone(x)
-        return classification_result, self.feature_map
+        
+        c4 = self.feature_map['layer4']
+        c3 = self.feature_map['layer3']
+        c2 = self.feature_map['layer2']
+        c1 = self.feature_map['layer1']
+        
+        p4 = self.fpn_latlayer4(c4)
+        p4_upsampled = F.interpolate(p4, scale_factor = 2, mode = 'bilinear', align_corners = False)
+        
+        p3 = self.fpn_latlayer3(c3) + p4_upsampled
+        p3_upsampled = F.interpolate(p3, scale_factor = 2, mode = 'bilinear', align_corners = False)
+        
+        p2 = self.fpn_latlayer2(c2) + p3_upsampled
+        p2_upsampled = F.interpolate(p2, scale_factor = 2, mode = 'bilinear', align_corners = False)
+        
+        p1 = self.fpn_latlayer1(c1) + p2_upsampled
+        
+        fused_features = {
+            'p4' : p4,
+            'p3' : p3,
+            'p2' : p2,
+            'p1' : p1
+        }
+        
+        return classification_result, fused_features
     
 if __name__ == "__main__":
     config = load_config("config.yaml")
