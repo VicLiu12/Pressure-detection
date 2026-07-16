@@ -45,9 +45,15 @@ if __name__ == "__main__":
     model.eval()
     print("Success loading Model")
     
-    test_img = torch.randn(1, 3, 224, 224)
+    from dataset import PressureUlcerDataset, clinical_transform
+    from torch.utils.data import DataLoader
     
-    output_class, fused_features = model(test_img)
+    dataset = PressureUlcerDataset(image_dir = "../data", transform = clinical_transform)
     
-    Multi_Feature_Image(test_img, fused_features)
+    dataloader = DataLoader(dataset, batch_size = 1, shuffle = True)
+    
+    real_images, labels = next(iter(dataloader))
+    
+    output_classes, fused_features = model(real_images)
+    Multi_Feature_Image(real_images, fused_features)
         
