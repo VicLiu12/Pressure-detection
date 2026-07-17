@@ -50,7 +50,11 @@ if __name__ == "__main__":
     
     clinical_transform = get_clinical_transform()
     
-    dataset = PressureUlcerDataset(image_dir = "../data", transform = clinical_transform)
+    base_dir = Path(__file__).resolve().parent.parent
+    data_path = base_dir / config['system']['data_dir']
+    print(f"Dataset path : {data_path}")
+    
+    dataset = PressureUlcerDataset(image_dir = str(data_path), transform = clinical_transform)
     
     dataloader = DataLoader(dataset, batch_size = 1, shuffle = True)
     

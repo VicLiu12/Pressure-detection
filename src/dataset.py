@@ -42,7 +42,7 @@ class PressureUlcerDataset(Dataset):
     
 def get_clinical_transform():
     return A.Compose([
-        A.Resize(224, 244),
+        A.Resize(224, 224),
         A.RandomBrightnessContrast(p = 0.5),
         A.HueSaturationValue(hue_shift_limit = 10, sat_shift_limit = 20, val_shift_limit = 10, p = 0.5),
         ToTensorV2()
