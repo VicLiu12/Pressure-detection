@@ -36,17 +36,20 @@ class PressureUlcerDataset(Dataset):
         
         if self.transform:
             augmented = self.transform(image=image)
-            image = augmented['image']
+            image = augmented['image'].float() / 255.0
         
         return image, label
-
-if __name__ == "__main__":
-    clinical_transform = A.Compose([
-        A.Resize(224,224),
-        A.RandomBrightnessContrast(p=0.5),
+    
+def get_clinical_transform():
+    return A.Compose([
+        A.Resize(224, 244),
+        A.RandomBrightnessContrast(p = 0.5),
         A.HueSaturationValue(hue_shift_limit = 10, sat_shift_limit = 20, val_shift_limit = 10, p = 0.5),
         ToTensorV2()
     ])
+
+if __name__ == "__main__":
+    clinical_transform = get_clinical_transform()
     
     dataset = PressureUlcerDataset(image_dir="./data", transform=clinical_transform)
     dataloader = DataLoader(dataset, batch_size = 4, shuffle = True)
