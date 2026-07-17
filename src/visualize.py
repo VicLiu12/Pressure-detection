@@ -45,8 +45,10 @@ if __name__ == "__main__":
     model.eval()
     print("Success loading Model")
     
-    from dataset import PressureUlcerDataset, clinical_transform
+    from dataset import PressureUlcerDataset, get_clinical_transform
     from torch.utils.data import DataLoader
+    
+    clinical_transform = get_clinical_transform()
     
     dataset = PressureUlcerDataset(image_dir = "../data", transform = clinical_transform)
     
