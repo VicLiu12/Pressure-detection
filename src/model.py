@@ -56,13 +56,13 @@ class DetectModel(nn.Module):
         c1 = self.feature_map['layer1']
         
         p4 = self.fpn_latlayer4(c4)
-        p4_upsampled = F.interpolate(p4, scale_factor = 2, mode = 'bilinear', align_corners = False)
+        p4_upsampled = F.interpolate(p4, size = c3.shape[2:], mode = 'bilinear', align_corners = False)
         
         p3 = self.fpn_latlayer3(c3) + p4_upsampled
-        p3_upsampled = F.interpolate(p3, scale_factor = 2, mode = 'bilinear', align_corners = False)
+        p3_upsampled = F.interpolate(p3, size = c2.shape[2:], mode = 'bilinear', align_corners = False)
         
         p2 = self.fpn_latlayer2(c2) + p3_upsampled
-        p2_upsampled = F.interpolate(p2, scale_factor = 2, mode = 'bilinear', align_corners = False)
+        p2_upsampled = F.interpolate(p2, size = c1.shape[2:], mode = 'bilinear', align_corners = False)
         
         p1 = self.fpn_latlayer1(c1) + p2_upsampled
         
