@@ -26,7 +26,7 @@ class DetectModel(nn.Module):
             weights = models.ResNet50_Weights.DEFAULT if pretrained else None
             self.backbone = models.resnet50(weights = weights)
             
-            self.bakbone.fc = nn.Identity()
+            self.backbone.fc = nn.Identity()
             
             #註冊攔截器
             self.backbone.layer1.register_forward_hook(self.get_hook('layer1'))
@@ -77,10 +77,10 @@ class DetectModel(nn.Module):
             'p1' : p1
         }
         
-        pool_p4 = self.global_pool(p4).flaten(1)
-        pool_p3 = self.global_pool(p3).flaten(1)
-        pool_p2 = self.global_pool(p2).flaten(1)
-        pool_p1 = self.global_pool(p1).flaten(1)
+        pool_p4 = self.global_pool(p4).flatten(1)
+        pool_p3 = self.global_pool(p3).flatten(1)
+        pool_p2 = self.global_pool(p2).flatten(1)
+        pool_p1 = self.global_pool(p1).flatten(1)
         
         holographic_vector = torch.cat([pool_p4, pool_p3, pool_p2, pool_p1], dim = 1)
         
