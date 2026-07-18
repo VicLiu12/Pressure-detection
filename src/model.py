@@ -26,21 +26,25 @@ class DetectModel(nn.Module):
             weights = models.ResNet50_Weights.DEFAULT if pretrained else None
             self.backbone = models.resnet50(weights = weights)
             
-            in_features = self.backbone.fc.in_features
-            self.backbone.fc = nn.Linear(in_features, num_classes)
+            self.bakbone.fc = nn.Identity()
             
+            #註冊攔截器
             self.backbone.layer1.register_forward_hook(self.get_hook('layer1'))
             self.backbone.layer2.register_forward_hook(self.get_hook('layer2'))
             self.backbone.layer3.register_forward_hook(self.get_hook('layer3'))
             self.backbone.layer4.register_forward_hook(self.get_hook('layer4'))
             
+            #FPN 轉換
             self.fpn_latlayer4 = nn.Conv2d(2048, 256, kernel_size=1)
             self.fpn_latlayer3 = nn.Conv2d(1024, 256, kernel_size=1)
             self.fpn_latlayer2 = nn.Conv2d(512, 256, kernel_size=1)
             self.fpn_latlayer1 = nn.Conv2d(256, 256, kernel_size=1)
+            
+            self.global_pool = nn.AdaptiveAvgPool2d(1)
+            self.fpn_classifier = nn.Linear(1024, num_classes)
         
         else :
-            raise ValueError("Model unsupported")
+            raise ValueError("Model ERROR")
     
     def get_hook(self, layer_name):
         def hook_fn(module, input, output):
@@ -48,7 +52,7 @@ class DetectModel(nn.Module):
         return hook_fn
         
     def forward(self, x):      
-        classification_result = self.backbone(x)
+        _ = self.backbone(x)
         
         c4 = self.feature_map['layer4']
         c3 = self.feature_map['layer3']
@@ -72,6 +76,15 @@ class DetectModel(nn.Module):
             'p2' : p2,
             'p1' : p1
         }
+        
+        pool_p4 = self.global_pool(p4).flaten(1)
+        pool_p3 = self.global_pool(p3).flaten(1)
+        pool_p2 = self.global_pool(p2).flaten(1)
+        pool_p1 = self.global_pool(p1).flaten(1)
+        
+        holographic_vector = torch.cat([pool_p4, pool_p3, pool_p2, pool_p1], dim = 1)
+        
+        classification_result = self.fpn_classifier(holographic_vector)
         
         return classification_result, fused_features
     
