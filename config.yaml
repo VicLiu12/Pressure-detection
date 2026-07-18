@@ -8,6 +8,7 @@ model :
   pretrained : True
 
 train:
-  batch_size : 4
+  batch_size : 2
   learning_rate : 0.0001
-  accumulation_steps : 8 #梯度累積次數
+  accumulation_steps : 4 #梯度累積次數
+  epochs : 50
