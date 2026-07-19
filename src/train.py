@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 from model import DetectModel, load_config
 from dataset import PressureUlcerDataset, get_clinical_transform
+from loss import FocalLoss
 
 def train_model():
     config = load_config("config.yaml")
@@ -20,8 +21,8 @@ def train_model():
     
     model = DetectModel(config)
     
-    #CrossEntropyLoss 損失函數 & 優化器
-    criterion = nn.CrossEntropyLoss()
+    #Focal Loss 損失函數 & 優化器
+    criterion = FocalLoss(alpha = 1.0, gamma = 2.0)
     optimizer = optim.Adam(model.parameter(), lr = config['train']['leaning_size'])
     
     epochs = config['train']['epochs']
