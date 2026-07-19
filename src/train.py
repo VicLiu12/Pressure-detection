@@ -16,6 +16,9 @@ def train_model():
     
     accumulation_steps = config['train'].get('accumulation_steps', 1)
     
+    #偵測使否有cuda可以使用
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
     dataset = PressureUlcerDataset(image_dir = str(data_path), transform = get_clinical_transform())
     dataloader = DataLoader(dataset, batch_size=config['train']['batch_size'], shuffle=True)
     
