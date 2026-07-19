@@ -58,7 +58,31 @@ def build_dataLoaders(image_dir, batch_size, val_split = 0.2):
             for img_name in os.listdir(class_dir):
                 all_paths.append(os.path.join(class_dir, img_name))
                 all_labels.append(label_idx)
-        
+    print(f"Total {len(all_paths)} images, {len(classes)} classes")
+    
+    
+    train_paths, val_paths, train_labels, val_labels = train_test_split(
+        all_paths, all_labels, test_size = val_split, stratify = all_labels, random_state = 42
+    )
+    print(f"train : {len(train_paths)}, val : {len{val_paths}}")
+    
+    
+    class_counts = np.bincount(train_labels)
+    
+    class_weights = 1.0 / class_counts
+    
+    sample_weights = np.array([class_weights[t] for t in train_labels])
+    sample_weights = torch.from_numpy(sample_weights).double()
+    
+    sampler = WeightedRandomSampler(weights=sample_weights, num_samples=len(sample_weights), replacement=True)
+    
+    train_dataset = PressureUlcerDataset(train_paths, train_labels, transform = get_clinical_transform(is_train=True))
+    val_dataset = PressureUlcerDataset(val_paths, val_labels, transform=get_clinical_transform(is_train=False))
+    
+    train_loader = DataLoader(train_dataset, batch_size = batch_size, sampler = sampler)
+    val_loader = DataLoader(val_dataset, batch_size = batch_size, shuffle = False)
+    
+    return train_loader, val_loader, classes
         
         
 
