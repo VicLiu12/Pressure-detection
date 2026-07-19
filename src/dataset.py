@@ -10,16 +10,16 @@ from sklearn.model_selection import train_test_split
 
 
 class PressureUlcerDataset(Dataset):
-    def __init__(self, image_dir, transform=None):
-        self.image_paths = self.image_paths
+    def __init__(self, image_paths, labels, transform=None):
+        self.image_paths = image_paths
         self.labels = labels
         self.transform = transform
 
     def __len__(self):
-        return len(self.image_path)
+        return len(self.image_paths)
     
     def __getitem__(self, idx):
-        img_path = self.image_path[idx]
+        img_path = self.image_paths[idx]
         
         image = cv2.imread(img_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -32,7 +32,7 @@ class PressureUlcerDataset(Dataset):
         
         return image, label
     
-def get_clinical_transform(is_train = True)):
+def get_clinical_transform(is_train = True):
     if is_train:
         return A.Compose([
             A.Resize(224, 224),
@@ -64,7 +64,7 @@ def build_dataLoaders(image_dir, batch_size, val_split = 0.2):
     train_paths, val_paths, train_labels, val_labels = train_test_split(
         all_paths, all_labels, test_size = val_split, stratify = all_labels, random_state = 42
     )
-    print(f"train : {len(train_paths)}, val : {len{val_paths}}")
+    print(f"train : {len(train_paths)}, val : {len(val_paths)}")
     
     
     class_counts = np.bincount(train_labels)
@@ -87,17 +87,7 @@ def build_dataLoaders(image_dir, batch_size, val_split = 0.2):
         
 
 if __name__ == "__main__":
-    clinical_transform = get_clinical_transform()
+    t_loader, v_loader, cls_names = build_dataLoaders(image_dir="./data", batch_size = 4, val_split = 0.2)
     
-    dataset = PressureUlcerDataset(image_dir="./data", transform=clinical_transform)
-    dataloader = DataLoader(dataset, batch_size = 4, shuffle = True)
-    
-    print(f"共有 {len(dataset)} 張影像")
-    print(f"有 {dataset.classes} 個分類")
-    
-    images, labels = next(iter(dataloader))
-    
-    print(f"影像 Batch 維度 (Batch, Channels, Height, Width): {images.shape}")
-    print(f"標籤 Batch: {labels}")
-    
-    print("complete")
+    images, labels = next(iter(t_loader))
+    print(f"{labels}")
