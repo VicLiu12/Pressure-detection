@@ -1,27 +1,19 @@
 import os
 import cv2
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.model_selection import train_test_split
+
 
 class PressureUlcerDataset(Dataset):
     def __init__(self, image_dir, transform=None):
-        
-        self.image_dir = image_dir
+        self.image_paths = self.image_paths
+        self.labels = labels
         self.transform = transform
-        self.image_path = []
-        self.labels = []
-        
-        self.classes = sorted(os.listdir(image_dir))
-        
-        for label_idx, class_name in enumerate(self.classes):
-            class_dir = os.path.join(image_dir, class_name)
-            if os.path.isdir(class_dir):
-                for img_name in os.listdir(class_dir):
-                    self.image_path.append(os.path.join(class_dir, img_name))
-                    self.labels.append(label_idx)
 
     def __len__(self):
         return len(self.image_path)
@@ -40,13 +32,35 @@ class PressureUlcerDataset(Dataset):
         
         return image, label
     
-def get_clinical_transform():
-    return A.Compose([
-        A.Resize(224, 224),
-        A.RandomBrightnessContrast(p = 0.5),
-        A.HueSaturationValue(hue_shift_limit = 10, sat_shift_limit = 20, val_shift_limit = 10, p = 0.5),
-        ToTensorV2()
-    ])
+def get_clinical_transform(is_train = True)):
+    if is_train:
+        return A.Compose([
+            A.Resize(224, 224),
+            A.RandomBrightnessContrast(p = 0.5),
+            A.HueSaturationValue(hue_shift_limit = 10, sat_shift_limit = 20, val_shift_limit = 10, p = 0.5),
+            ToTensorV2()
+        ])
+    else:
+        return A.Compose([
+            A.Resize(224, 224),
+            ToTensorV2()
+        ])
+        
+def build_dataLoaders(image_dir, batch_size, val_split = 0.2):
+    all_paths = []
+    all_labels = []
+    classes = sorted(os.listdir(image_dir))
+    
+    for label_idx, class_name in enumerate(classes):
+        class_dir = os.path.join(image_dir, class_name)
+        
+        if os.path.isdir(class_dir):
+            for img_name in os.listdir(class_dir):
+                all_paths.append(os.path.join(class_dir, img_name))
+                all_labels.append(label_idx)
+        
+        
+        
 
 if __name__ == "__main__":
     clinical_transform = get_clinical_transform()
