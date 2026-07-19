@@ -4,6 +4,10 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from pathlib import Path
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+import cv2
+import numpy as np
+import os
 
 from model import DetectModel, load_config
 from dataset import PressureUlcerDataset, get_clinical_transform
