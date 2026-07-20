@@ -56,7 +56,7 @@ def train_model():
     
     train_loader, val_loader, class_names = build_dataLoaders(
         image_dir=str(data_path),
-        batch_size=config['train']['batch_size']
+        batch_size=config['train']['batch_size'],
         val_split=0.2
     )
     
