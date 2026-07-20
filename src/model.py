@@ -13,11 +13,11 @@ def load_config(config_name = "config.yaml"):
         return yaml.safe_load(file)
     
 #尋找大部分特徵
-class ChannelAtteention(nn.modules):
+class ChannelAttention(nn.Module):
     def __init__(self, in_planes, ratio = 16):
-        super(ChannelAtteention, self).__init__()
+        super(ChannelAttention, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.max_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
         
         self.fc = nn.Sequential(
             nn.Conv2d(in_planes, in_planes // ratio, 1, bias = False),
@@ -34,12 +34,12 @@ class ChannelAtteention(nn.modules):
     
 
 #尋找特定特徵
-class SpatialAttention(nn.modules):
+class SpatialAttention(nn.Module):
     def __init__(self, kernel_size = 7):
         super(SpatialAttention, self).__init__()
         padding = 3 if kernel_size == 7 else 1
-        self.conv = nn.Conv2d(2, 1, kernel_size, padding = padding, bias = False)
-        self.sigmiod = nn.Sigmoid
+        self.conv1 = nn.Conv2d(2, 1, kernel_size, padding = padding, bias = False)
+        self.sigmiod = nn.Sigmoid()
         
     def forward(self, x):
         avg_out = torch.mean(x, dim = 1, keepdim = True)
@@ -49,10 +49,10 @@ class SpatialAttention(nn.modules):
         return self.sigmiod(x)
     
     
-class CBAM(nn.modules):
+class CBAM(nn.Module):
     def __init__(self, in_planes, ratio = 16, kernel_size = 7):
         super(CBAM, self).__init__()
-        self.ca = ChannelAtteention(in_planes, ratio)
+        self.ca = ChannelAttention(in_planes, ratio)
         self.sa = SpatialAttention(kernel_size)
         
     def forward(self, x):
