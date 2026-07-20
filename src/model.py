@@ -83,6 +83,11 @@ class DetectModel(nn.Module):
             self.backbone.layer3.register_forward_hook(self.get_hook('layer3'))
             self.backbone.layer4.register_forward_hook(self.get_hook('layer4'))
             
+            self.cbam4 = CBAM(2048)
+            self.cbam3 = CBAM(1024)
+            self.cbam2 = CBAM(512)
+            self.cbam1 = CBAM(256)
+            
             #FPN 轉換
             self.fpn_latlayer4 = nn.Conv2d(2048, 256, kernel_size=1)
             self.fpn_latlayer3 = nn.Conv2d(1024, 256, kernel_size=1)
@@ -103,10 +108,10 @@ class DetectModel(nn.Module):
     def forward(self, x):      
         _ = self.backbone(x)
         
-        c4 = self.feature_map['layer4']
-        c3 = self.feature_map['layer3']
-        c2 = self.feature_map['layer2']
-        c1 = self.feature_map['layer1']
+        c4 = self.cbam4(self.feature_map['layer4'])
+        c3 = self.cbam3(self.feature_map['layer3'])
+        c2 = self.cbam2(self.feature_map['layer2'])
+        c1 = self.cbam1(self.feature_map['layer1'])
         
         p4 = self.fpn_latlayer4(c4)
         p4_upsampled = F.interpolate(p4, size = c3.shape[2:], mode = 'bilinear', align_corners = False)
