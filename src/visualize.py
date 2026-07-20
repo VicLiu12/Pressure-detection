@@ -31,12 +31,12 @@ class Grad_CAM:
         
         weights = torch.mean(gradients, dim = (1, 2))
         
-        cam = torch.zeros(activations.shape[1:], dtype = torch.float32)
+        cam = torch.zeros(activations.shape[1:], dtype = torch.float32, device = activations.device)
         for i, w in enumerate(weights):
             cam += w * activations[i]
             
         cam = F.relu(cam)
-        cam = cam.detach().numpy()
+        cam = cam.detach().cpu().numpy()
         cam = (cam - cam.min()) / (cam.max() - cam.min() + 1e-8)
         
         return cam
