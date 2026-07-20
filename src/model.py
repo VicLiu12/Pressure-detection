@@ -12,6 +12,32 @@ def load_config(config_name = "config.yaml"):
     with open(config_path, "r", encoding="utf-8") as file:
         return yaml.safe_load(file)
     
+#尋找大部分特徵
+class ChannelAtteention(nn.modules):
+    def __init__(self, in_planes, ratio = 16):
+        super(ChannelAtteention, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveAvgPool2d(1)
+        
+        self.fc = nn.Sequential(
+            nn.Conv2d(in_planes, in_planes // ratio, 1, bias = False),
+            nn.ReLU(),
+            nn.Conv2d(in_planes // ratio, in_planes, 1, bias = False)
+        )
+        self.sigmoid = nn.Sigmoid()
+        
+    def forward(self, x):
+        avg_out = self.fc(self.avg_pool(x))
+        max_out = self.fc(self.max_pool(x))
+        out = avg_out + max_out
+        return self.sigmoid(out)
+    
+
+#尋找特定特徵
+class SpatialAttention(nn.modules):
+    def
+    
+    
 class DetectModel(nn.Module):
     def __init__(self, config):
         super(DetectModel, self).__init__()
