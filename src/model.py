@@ -35,8 +35,31 @@ class ChannelAtteention(nn.modules):
 
 #尋找特定特徵
 class SpatialAttention(nn.modules):
-    def
+    def __init__(self, kernel_size = 7):
+        super(SpatialAttention, self).__init__()
+        padding = 3 if kernel_size == 7 else 1
+        self.conv = nn.Conv2d(2, 1, kernel_size, padding = padding, bias = False)
+        self.sigmiod = nn.Sigmoid
+        
+    def forward(self, x):
+        avg_out = torch.mean(x, dim = 1, keepdim = True)
+        max_out, _ = torch.max(x, dim = 1, keepdim = True)
+        x = torch.cat([avg_out, max_out], dim = 1)
+        x = self.conv1(x)
+        return self.sigmiod(x)
     
+    
+class CBAM(nn.modules):
+    def __init__(self, in_planes, ratio = 16, kernel_size = 7):
+        super(CBAM, self).__init__()
+        self.ca = ChannelAtteention(in_planes, ratio)
+        self.sa = SpatialAttention(kernel_size)
+        
+    def forward(self, x):
+        x = x * self.ca(x)
+        x = x * self.sa(x)
+        return x
+       
     
 class DetectModel(nn.Module):
     def __init__(self, config):
