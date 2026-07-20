@@ -21,7 +21,7 @@ def save_image(model,image_tansor, epoch, save_dir):
     img_np = image_tansor[0].cpu().permute(1, 2, 0).detach().numpy()
     img_np = (img_np - img_np.min()) / (img_np.max() - img_np.min() + 1e-5)
     
-    fig, axes = plt.subplot(1, 5, figsize = (20, 4))
+    fig, axes = plt.subplots(1, 5, figsize = (20, 4))
     axes[0].imshow(img_np)
     axes[0].set_title(f"Epoch {epoch} - Input", fontsize=14, fontweight='bold')
     axes[0].axis('off')
@@ -40,7 +40,7 @@ def save_image(model,image_tansor, epoch, save_dir):
         
     fig.tight_layout()
     
-    plt.savfig(save_dir / f"epoch_{epoch:03d}.png")
+    plt.savefig(save_dir / f"epoch_{epoch:03d}.png")
     plt.close(fig)
 
 
@@ -85,7 +85,7 @@ def train_model():
         
         train_bar = tqdm(train_loader, total = len(train_loader), desc = f"Epoch {epoch}/{epochs} [Train]")
         
-        for step, (images, labels) in enumerate(train_loader):
+        for step, (images, labels) in enumerate(train_bar):
             images, labels = images.to(device), labels.to(device)
             
             outputs, _ = model(images)
