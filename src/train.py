@@ -91,7 +91,11 @@ def train_model():
         
         current_lr = optimizer.param_groups[0]['lr']
         
-        train_bar = tqdm(train_loader, total = len(train_loader), desc = f"Epoch {epoch}/{epochs} [Train]")
+        train_bar = tqdm(
+            train_loader, 
+            total = len(train_loader), 
+            desc = f"Epoch {epoch}/{epochs} [Train, LR: {current_lr:.1e}]]"
+        )
         
         for step, (images, labels) in enumerate(train_bar):
             images, labels = images.to(device), labels.to(device)
