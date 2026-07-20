@@ -105,7 +105,7 @@ def train_model():
             
             if (step + 1) % accumulation_steps == 0 or (step + 1) == len(train_loader):
                 
-                torch.nn.utils.clip_grad_norm(model.parameters(), max_norm = 5.0)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm = 5.0)
                 
                 optimizer.step()
                 optimizer.zero_grad()
