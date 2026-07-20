@@ -70,7 +70,7 @@ def train_model():
     
     #Focal Loss 損失函數 & 優化器
     criterion = FocalLoss(alpha = 1.0, gamma = 2.0)
-    optimizer = optim.Adam(model.parameters(), lr = config['train']['leaning_size'])
+    optimizer = optim.Adam(model.parameters(), lr = config['train']['leaning_rate'])
     
     epochs = config['train']['epochs']
     print(f"Accumulation_steps : {accumulation_steps}")
