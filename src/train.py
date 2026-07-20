@@ -61,7 +61,7 @@ def train_model():
     )
     
     track_images, _ = next(iter(val_loader))
-    track_image = track_images[0:1].tp(device)
+    track_image = track_images[0:1].to(device)
     
     track_dir = base_dir / "history_detect_images"
     track_dir.mkdir(exist_ok=True)
