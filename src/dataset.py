@@ -46,7 +46,7 @@ def get_clinical_transform(is_train = True):
             ToTensorV2()
         ])
         
-def build_dataLoaders(image_dir, batch_size, val_split = 0.2):
+def build_dataloaders(image_dir, batch_size, val_split = 0.2):
     all_paths = []
     all_labels = []
     classes = sorted(os.listdir(image_dir))
@@ -87,7 +87,7 @@ def build_dataLoaders(image_dir, batch_size, val_split = 0.2):
         
 
 if __name__ == "__main__":
-    t_loader, v_loader, cls_names = build_dataLoaders(image_dir="./data", batch_size = 4, val_split = 0.2)
+    t_loader, v_loader, cls_names = build_dataloaders(image_dir="./data", batch_size = 4, val_split = 0.2)
     
     images, labels = next(iter(t_loader))
     print(f"{labels}")

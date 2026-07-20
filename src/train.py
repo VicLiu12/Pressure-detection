@@ -8,9 +8,10 @@ import matplotlib.pyplot as plt
 import cv2
 import numpy as np
 import os
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from model import DetectModel, load_config
-from dataset import build_dataLoaders
+from dataset import build_dataloaders
 from loss import FocalLoss
 from visualize import Grad_CAM
 
@@ -54,7 +55,7 @@ def train_model():
     #偵測使否有cuda可以使用
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    train_loader, val_loader, class_names = build_dataLoaders(
+    train_loader, val_loader, class_names = build_dataloaders(
         image_dir=str(data_path),
         batch_size=config['train']['batch_size'],
         val_split=0.2
@@ -75,13 +76,20 @@ def train_model():
     epochs = config['train']['epochs']
     print(f"Accumulation_steps : {accumulation_steps}")
     
+    scheduler = CosineAnnealingLR(optimizer, T_max = epochs, eta_min = 1e-6)
+    
     best_val_acc = 0.0
+    
+    patience = 10 
+    early_stop = 0
     
     for epoch in range(1, epochs + 1):
         
         #Train process
         model.train()
         runnning_loss = 0.0
+        
+        current_lr = optimizer.param_groups[0]['lr']
         
         train_bar = tqdm(train_loader, total = len(train_loader), desc = f"Epoch {epoch}/{epochs} [Train]")
         
@@ -96,6 +104,9 @@ def train_model():
             loss.backward()
             
             if (step + 1) % accumulation_steps == 0 or (step + 1) == len(train_loader):
+                
+                torch.nn.utils.clip_grad_norm(model.parameters(), max_norm = 5.0)
+                
                 optimizer.step()
                 optimizer.zero_grad()
                 
@@ -124,8 +135,19 @@ def train_model():
             save_dir = base_dir / "weights"
             save_dir.mkdir(exist_ok = True)
             torch.save(model.state_dict(), save_dir / "best_model.pth")
+            early_stop = 0
+            
+        else:
+            early_stop += 1
+            print("Accuracy is not grow up")
             
         save_image(model, track_image, epoch, track_dir)
+        
+        scheduler.step()
+        
+        if early_stop >= patience:
+            print("Early STOP")
+            break
                 
 if __name__ == "__main__":
     train_model()
