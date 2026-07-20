@@ -10,8 +10,39 @@ import numpy as np
 import os
 
 from model import DetectModel, load_config
-from dataset import PressureUlcerDataset, get_clinical_transform
+from dataset import build_dataLoaders
 from loss import FocalLoss
+from visualize import Grad_CAM
+
+
+def save_cam(model,image_tansor, epoch, save_dir):
+    cam_main = Grad_CAM(model)
+    
+    img_np = image_tansor[0].cpu().permute(1, 2, 0).detach().numpy()
+    img_np = (img_np - img_np.min()) / (img_np.max() - img_np.min() + 1e-5)
+    
+    fig, axes = plt.subplot(1, 5, figsize = (20, 4))
+    axes[0].imshow(img_np)
+    axes[0].set_title(f"Epoch {epoch} - Input", fontsize=14, fontweight='bold')
+    axes[0].axis('off')
+    
+    keys = ['p4', 'p3', 'p2', 'p1']
+    titles = ['P4 (Macro)', 'P3 (Mid)', 'P2 (Edge)', 'P1 (Micro)']
+    
+    for i, (key, title) in enumerate(zip(keys, titles)):
+        cam = cam_main.generate_cam(image_tansor, target_layer=key)
+        cam_resized = cv2.resize(cam, (224, 224), interpolation=cv2.INTER_CUBIC)
+        
+        axes[i+1].imshow(img_np, alpha = 0.6)
+        axes[i+1].imshow(cam_resized, cmap = 'jet', alpha = 0.5)
+        axes[i+1].set_title(title, fontsize = 12)
+        axes[i+1].axis('off')
+        
+    fig.tight_layout()
+    
+    plt.savfig(save_dir / f"epoch_{epoch:03d}.png")
+    plt.close(fig)
+
 
 def train_model():
     config = load_config("config.yaml")
