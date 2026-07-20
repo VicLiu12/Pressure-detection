@@ -15,7 +15,7 @@ from loss import FocalLoss
 from visualize import Grad_CAM
 
 
-def save_cam(model,image_tansor, epoch, save_dir):
+def save_image(model,image_tansor, epoch, save_dir):
     cam_main = Grad_CAM(model)
     
     img_np = image_tansor[0].cpu().permute(1, 2, 0).detach().numpy()
@@ -54,10 +54,19 @@ def train_model():
     #偵測使否有cuda可以使用
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    dataset = PressureUlcerDataset(image_dir = str(data_path), transform = get_clinical_transform())
-    dataloader = DataLoader(dataset, batch_size=config['train']['batch_size'], shuffle=True)
+    train_loader, val_loader, class_names = build_dataLoaders(
+        image_dir=str(data_path),
+        batch_size=config['train']['batch_size']
+        val_split=0.2
+    )
     
-    model = DetectModel(config)
+    track_images, _ = next(iter(val_loader))
+    track_image = track_images[0:1].tp(device)
+    
+    track_dir = base_dir / "history_detect_images"
+    track_dir.mkdir(exist_ok=True)
+    
+    model = DetectModel(config).to(device)
     
     #Focal Loss 損失函數 & 優化器
     criterion = FocalLoss(alpha = 1.0, gamma = 2.0)
@@ -66,13 +75,19 @@ def train_model():
     epochs = config['train']['epochs']
     print(f"Accumulation_steps : {accumulation_steps}")
     
-    for epoch in range(epochs):
+    best_val_acc = 0.0
+    
+    for epoch in range(1, epochs + 1):
+        
+        #Train process
         model.train()
         runnning_loss = 0.0
         
-        progress_bar = tqdm(enumerate(dataloader), total = len(dataloader), desc = f"Epoch {epoch+1}/{epochs}")
+        train_bar = tqdm(train_loader, total = len(train_loader), desc = f"Epoch {epoch}/{epochs} [Train]")
         
-        for step, (images, labels) in progress_bar:
+        for step, (images, labels) in enumerate(train_loader):
+            images, labels = images.to(device), labels.to(device)
+            
             outputs, _ = model(images)
             loss = criterion(outputs, labels)
             
@@ -80,13 +95,38 @@ def train_model():
             
             loss.backward()
             
-            if (step + 1) % accumulation_steps == 0 or (step + 1) == len(dataloader):
+            if (step + 1) % accumulation_steps == 0 or (step + 1) == len(train_loader):
                 optimizer.step()
                 optimizer.zero_grad()
                 
             runnning_loss += loss.item() * accumulation_steps
-            progress_bar.set_postfix({'Loss' : f"{runnning_loss / (step + 1):.4f}"})
-    
+            train_bar.set_postfix({'Loss' : f"{runnning_loss / (step + 1):.4f}"})
+        
+        #Validation process 
+        model.eval()
+        val_correct = 0
+        val_total = 0
+        
+        with torch.no_grad():
+            val_bar = tqdm(val_loader, total = len(val_loader), desc = f"Epoch {epoch}/{epochs} [Val]")
+            for images, labels in val_bar:
+                images, labels = images.to(device), labels.to(device)
+                outputs, _ = model(images)
+                _, predicted = torch.max(outputs.data, 1)
+                val_total += labels.size(0)
+                val_correct += (predicted == labels).sum().item()
+                
+        val_acc = 100 * val_correct / val_total
+        print(f"Accuracy of validation : {val_acc: 2f}%")
+        
+        if val_acc > best_val_acc:
+            best_val_acc = val_acc
+            save_dir = base_dir / "weights"
+            save_dir.mkdir(exist_ok = True)
+            torch.save(model.state_dict(), save_dir / "best_model.pth")
+            
+        save_image(model, track_image, epoch, track_dir)
+                
 if __name__ == "__main__":
     train_model()
                        
