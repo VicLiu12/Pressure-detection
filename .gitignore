@@ -222,12 +222,14 @@ data/
 datasets/
 Kaggle_Data/
 
+
 *.pt
 *.pth
 *.onnx
 weights/
 saved_models/
 checkpoints/
+history_detect_images/
 
 runs/
 logs/
