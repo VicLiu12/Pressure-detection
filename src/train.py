@@ -120,6 +120,12 @@ def train_model():
     epochs = config['train']['epochs']
     print(f"Accumulation_steps : {accumulation_steps}")
     
+    base_optimizer = torch.optim.Adam
+    optimizer = SAM(model.parameters(), 
+                    base_optimizer, 
+                    lr = config['train']['learning_rate']
+                )
+    
     scheduler = CosineAnnealingLR(optimizer, T_max = epochs, eta_min = 1e-6)
     
     best_val_acc = 0.0
@@ -155,8 +161,14 @@ def train_model():
                 
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm = 5.0)
                 
-                optimizer.step()
-                optimizer.zero_grad()
+                optimizer.first_step(zero_grad = True)
+                
+                outputs_2, _ = model(images)
+                loss_2 = criterion(outputs_2, labels)
+                loss_2 = loss_2 / accumulation_steps
+                loss_2.backward()
+                
+                optimizer.second_step(zero_grad = True)
                 
             runnning_loss += loss.item() * accumulation_steps
             train_bar.set_postfix({'Loss' : f"{runnning_loss / (step + 1):.4f}"})
