@@ -13,7 +13,7 @@ def evaluate_model():
     
     config = load_config("config.yaml")
     base_dir = Path(__file__).resolve().parent.parent
-    data_path = base_dir / config['systm']['data_dir']
+    data_path = base_dir / config['system']['data_dir']
     weights_path = base_dir / "weights" / "best_model.pth"
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -26,8 +26,8 @@ def evaluate_model():
     )
     
     model = DetectModel(config).to(device)
-    model.load_state_dict(torch.lead(weights_path, map_lacation = device))
-    model.val()
+    model.load_state_dict(torch.load(weights_path, map_location = device))
+    model.eval()
     
     all_preds = []
     all_labels = []
@@ -64,8 +64,8 @@ def evaluate_model():
     plt.tight_layout()
     plt.savefig(save_dir / "confusion_matrix.png", dpi=300)
     
-    if __name__ == "__main__":
-        evaluate_model()
+if __name__ == "__main__":
+    evaluate_model()
 
 
 
