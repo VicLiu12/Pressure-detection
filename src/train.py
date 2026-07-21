@@ -17,11 +17,11 @@ from visualize import Grad_CAM
 
 
 class SAM(torch.optim.Optimizer):
-    def __init__(self, parmas, base_optimizer, rho = 0.05, **kwarge):
+    def __init__(self, params, base_optimizer, rho = 0.05, **kwargs):
         assert rho >= 0.0, f"Invalid rho, should be non-negative: {rho}"
-        defaults = dict(rho = rho, **kwarge)
-        super(SAM, self).__init__(parmas, defaults)
-        self.base_optimizer = base_optimizer(self.param_groups, **kwarge)
+        defaults = dict(rho = rho, **kwargs)
+        super(SAM, self).__init__(params, defaults)
+        self.base_optimizer = base_optimizer(self.param_groups, **kwargs)
         self.param_groups = self.base_optimizer.param_groups
         
     @torch.no_grad()
@@ -35,7 +35,7 @@ class SAM(torch.optim.Optimizer):
                 p.add_(e_w)
                 self.state[p]["e_w"] = e_w 
                 
-        if self.zero_grad : self.zero_grad()
+        if zero_grad : self.zero_grad()
         
     @torch.no_grad()
     def second_step(self, zero_grad = False):
@@ -52,7 +52,7 @@ class SAM(torch.optim.Optimizer):
         norm = torch.norm(
             torch.stack([
                 p.grad.norm(p = 2)
-                for group in self.parma_groups for p in group["params"]
+                for group in self.param_groups for p in group["params"]
                 if p.grad is not None
             ]),
             p = 2
