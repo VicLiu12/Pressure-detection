@@ -126,7 +126,7 @@ def train_model():
                     lr = config['train']['learning_rate']
                 )
     
-    scheduler = CosineAnnealingLR(optimizer, T_max = epochs, eta_min = 1e-6)
+    scheduler = CosineAnnealingLR(optimizer.base_optimizer, T_max = epochs, eta_min = 1e-6)
     
     best_val_acc = 0.0
     
