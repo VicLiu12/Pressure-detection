@@ -12,7 +12,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from model import DetectModel, load_config
 from dataset import build_dataloaders
-from loss import FocalLoss
+from loss import Loss_function
 from visualize import Grad_CAM
 
 
@@ -114,7 +114,7 @@ def train_model():
     model = DetectModel(config).to(device)
     
     #Focal Loss 損失函數 & 優化器
-    criterion = FocalLoss(alpha = 1.0, gamma = 2.0)
+    criterion = Loss_function(alpha = 1.0, gamma = 2.0)
     optimizer = optim.Adam(model.parameters(), lr = config['train']['learning_rate'])
     
     epochs = config['train']['epochs']

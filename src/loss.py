@@ -27,6 +27,21 @@ class Loss_function(nn.Module):
         
     
     def forward(self, inputs, targets):
-        ce_loss = 
+        ce_loss = F.cross_entropy(inputs, targets, reduction = 'none')
+        pt = torch.exp(-ce_loss)
+        focal_loss = self.alpha * (1 - pt) ** self.gamma * ce_loss
+        
+        probs = F.softmax(inputs, dim = 1)
+        
+        targets_costs = self.dynamic_matrix[targets]
+        
+        expected_costs = torch.sum(probs * targets_costs, dim = 1)
+        
+        weighted_loss = focal_loss * expected_costs
+        final_loss = weighted_loss.mean()
+        
+        reg_loss = self.l2_reg * torch.norm(self.dynamic_matrix - self.prior_matrix)
+        
+        return final_loss + reg_loss
 
 
