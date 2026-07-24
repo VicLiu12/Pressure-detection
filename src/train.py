@@ -114,7 +114,7 @@ def train_model():
     model = DetectModel(config).to(device)
     
     #Focal Loss 損失函數 & 優化器
-    criterion = Loss_function(alpha = 1.0, gamma = 2.0)
+    criterion = Loss_function(alpha = 1.0, gamma = 2.0).to(device)
     optimizer = optim.Adam(model.parameters(), lr = config['train']['learning_rate'])
     
     epochs = config['train']['epochs']
