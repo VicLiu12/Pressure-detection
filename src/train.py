@@ -130,8 +130,8 @@ def train_model():
     
     best_val_acc = 0.0
     
-    patience = 10 
-    early_stop = 0
+    history_train_loss = []
+    history_val_acc = []
     
     for epoch in range(1, epochs + 1):
         
@@ -172,6 +172,9 @@ def train_model():
                 
             runnning_loss += loss.item() * accumulation_steps
             train_bar.set_postfix({'Loss' : f"{runnning_loss / (step + 1):.4f}"})
+
+        epoch_train_loss = runnning_loss / len(train_loader)
+        history_train_loss.append(epoch_train_loss)
         
         #Validation process 
         model.eval()
@@ -189,26 +192,47 @@ def train_model():
                 
         val_acc = 100 * val_correct / val_total
         print(f"Accuracy of validation : {val_acc: 2f}%")
+        history_val_acc.append(val_acc)
         
         if val_acc > best_val_acc:
             best_val_acc = val_acc
             save_dir = base_dir / "weights"
             save_dir.mkdir(exist_ok = True)
             torch.save(model.state_dict(), save_dir / "best_model.pth")
-            early_stop = 0
-            
-        else:
-            early_stop += 1
-            print("Accuracy is not grow up")
+            print("The best model is saved in folder weights")
             
         save_image(model, track_image, epoch, track_dir)
-        
         scheduler.step()
+            
+    plt.figure(figsize = (14, 5))
+
+
+    #Train Loss curve
+    plt.subplot(1, 2, 1)
+    plt.plot(range(1, epochs + 1), history_train_loss, marker = '0', color = 'blue', labels = 'Train Loss ')
+    plt.title('Training Loss Over Epochs', fontsize = 14, fontweight = 'bold')
+    plt.xlabel('Epoch', fontsize = 12)
+    plt.ylabel('Loss', fontsize = 12)
+    plt.grid(True, linestyle = '--', alpha = 0.7)
+    plt.legend()
+
+    #Validation Accuracy curve
+    plt.subplot(1, 2, 2)
+    plt.plot(range(1, epoch, 1), history_val_acc, marker = 's', color = 'green', label = 'Validation Accuracy ')
+    plt.title('Validation Accuracy Over Epochs', fontsize=14, fontweight='bold')
+    plt.xlabel('Epoch', fontsize = 12)
+    plt.ylabel('Accuracy (%)', fontsize = 12)
+    plt.grid(True, linestyle = '--', alpha = 0.7)
+    plt.legend()
+
+    plt.tight_layout()
+    eval_dir = base_dir / "evaluation_results"
+    eval_dir.mkdir(exist_ok = True)
+    curve_save_path = eval_dir / "learning_curve.png"
+    plt.savefig(curve_save_path, dpi = 400)
+    plt.close()
         
-        if early_stop >= patience:
-            print("Early STOP")
-            break
-                
+        
 if __name__ == "__main__":
     train_model()
                        
