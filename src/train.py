@@ -209,7 +209,7 @@ def train_model():
 
     #Train Loss curve
     plt.subplot(1, 2, 1)
-    plt.plot(range(1, epochs + 1), history_train_loss, marker = '0', color = 'blue', labels = 'Train Loss ')
+    plt.plot(range(1, epochs + 1), history_train_loss, marker = 'o', color = 'blue', label = 'Train Loss ')
     plt.title('Training Loss Over Epochs', fontsize = 14, fontweight = 'bold')
     plt.xlabel('Epoch', fontsize = 12)
     plt.ylabel('Loss', fontsize = 12)
@@ -218,7 +218,7 @@ def train_model():
 
     #Validation Accuracy curve
     plt.subplot(1, 2, 2)
-    plt.plot(range(1, epoch, 1), history_val_acc, marker = 's', color = 'green', label = 'Validation Accuracy ')
+    plt.plot(range(1, epoch + 1), history_val_acc, marker = 's', color = 'green', label = 'Validation Accuracy ')
     plt.title('Validation Accuracy Over Epochs', fontsize=14, fontweight='bold')
     plt.xlabel('Epoch', fontsize = 12)
     plt.ylabel('Accuracy (%)', fontsize = 12)
