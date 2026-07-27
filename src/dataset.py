@@ -22,10 +22,11 @@ class PressureUlcerDataset(Dataset):
         img_path = self.image_paths[idx]
         
         image = cv2.imread(img_path)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) #BGR轉RGB
         
         label = self.labels[idx]
-        
+
+        #影像正規化
         if self.transform:
             augmented = self.transform(image=image)
             image = augmented['image'].float() / 255.0
@@ -36,7 +37,7 @@ def get_clinical_transform(is_train = True):
     if is_train:
         return A.Compose([
             A.Resize(224, 224),
-            A.RandomBrightnessContrast(p = 0.5),
+            A.RandomBrightnessContrast(p = 0.5),   #隨機亮度對比 、隨機色相/飽和度/透明度
             A.HueSaturationValue(hue_shift_limit = 10, sat_shift_limit = 20, val_shift_limit = 10, p = 0.5),
             ToTensorV2()
         ])
@@ -60,7 +61,7 @@ def build_dataloaders(image_dir, batch_size, val_split = 0.2):
                 all_labels.append(label_idx)
     print(f"Total {len(all_paths)} images, {len(classes)} classes")
     
-    
+    #stratify確保在切割訓練集和驗證集時，兩個資料集中的各類別比例會完全一致
     train_paths, val_paths, train_labels, val_labels = train_test_split(
         all_paths, all_labels, test_size = val_split, stratify = all_labels, random_state = 42
     )
@@ -73,7 +74,8 @@ def build_dataloaders(image_dir, batch_size, val_split = 0.2):
     
     sample_weights = np.array([class_weights[t] for t in train_labels])
     sample_weights = torch.from_numpy(sample_weights).double()
-    
+
+    #透過 np.bincount 計算每個類別的樣本數，然後取倒數作為該類別的權重
     sampler = WeightedRandomSampler(weights=sample_weights, num_samples=len(sample_weights), replacement=True)
     
     train_dataset = PressureUlcerDataset(train_paths, train_labels, transform = get_clinical_transform(is_train=True))
