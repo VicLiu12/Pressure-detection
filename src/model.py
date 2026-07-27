@@ -16,13 +16,13 @@ def load_config(config_name = "config.yaml"):
 class ChannelAttention(nn.Module):
     def __init__(self, in_planes, ratio = 16):
         super(ChannelAttention, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.max_pool = nn.AdaptiveMaxPool2d(1)
+        self.avg_pool = nn.AdaptiveAvgPool2d(1) #全局平均池化
+        self.max_pool = nn.AdaptiveMaxPool2d(1) #最大池化
         
         self.fc = nn.Sequential(
             nn.Conv2d(in_planes, in_planes // ratio, 1, bias = False),
             nn.ReLU(),
-            nn.Conv2d(in_planes // ratio, in_planes, 1, bias = False)
+            nn.Conv2d(in_planes // ratio, in_planes, 1, bias = False) #1x1的卷積核
         )
         self.sigmoid = nn.Sigmoid()
         
@@ -30,12 +30,12 @@ class ChannelAttention(nn.Module):
         avg_out = self.fc(self.avg_pool(x))
         max_out = self.fc(self.max_pool(x))
         out = avg_out + max_out
-        return self.sigmoid(out)
+        return self.sigmoid(out)  #透過sigmoid函數轉為0~1的權重
     
 
 #尋找特定特徵
 class SpatialAttention(nn.Module):
-    def __init__(self, kernel_size = 7):
+    def __init__(self, kernel_size = 7):  #7x7的卷積核
         super(SpatialAttention, self).__init__()
         padding = 3 if kernel_size == 7 else 1
         self.conv1 = nn.Conv2d(2, 1, kernel_size, padding = padding, bias = False)
@@ -99,12 +99,15 @@ class DetectModel(nn.Module):
         
         else :
             raise ValueError("Model ERROR")
-    
+
+    #取得layer1~layer4過程的特徵圖提取出來
     def get_hook(self, layer_name):
         def hook_fn(module, input, output):
             self.feature_map[layer_name] = output
         return hook_fn
-        
+
+
+    #FPN (Feature Pyramid Network)    
     def forward(self, x):      
         _ = self.backbone(x)
         
@@ -135,7 +138,8 @@ class DetectModel(nn.Module):
         pool_p3 = self.global_pool(p3).flatten(1)
         pool_p2 = self.global_pool(p2).flatten(1)
         pool_p1 = self.global_pool(p1).flatten(1)
-        
+
+        #Holographic Vector 將P4~P1各為256的向量做串接再送入全連階層fpn_classifier做分類
         holographic_vector = torch.cat([pool_p4, pool_p3, pool_p2, pool_p1], dim = 1)
         
         classification_result = self.fpn_classifier(holographic_vector)
