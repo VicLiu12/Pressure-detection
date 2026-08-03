@@ -95,7 +95,18 @@ class DetectModel(nn.Module):
             self.fpn_latlayer1 = nn.Conv2d(256, 256, kernel_size=1)
             
             self.global_pool = nn.AdaptiveAvgPool2d(1)
-            self.fpn_classifier = nn.Linear(1024, num_classes)
+            
+            self.holographic_dim = 1024
+            #特徵分類頭
+            self.classifier_head = nn.Linear(self.holographic_dim, num_classes)
+            
+            #階層對比頭
+            self.projection_head = nn.Sequential(
+                nn.Linear(self.holographic_dim, 512),
+                nn.BatchNorm1d(512),
+                nn.ReLU(inplace = True),
+                nn.Linear(512, 128)
+            )
         
         else :
             raise ValueError("Model ERROR")
