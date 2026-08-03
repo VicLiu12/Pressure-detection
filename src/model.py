@@ -150,12 +150,16 @@ class DetectModel(nn.Module):
         pool_p2 = self.global_pool(p2).flatten(1)
         pool_p1 = self.global_pool(p1).flatten(1)
 
-        #Holographic Vector 將P4~P1各為256的向量做串接再送入全連階層fpn_classifier做分類
+        
         holographic_vector = torch.cat([pool_p4, pool_p3, pool_p2, pool_p1], dim = 1)
         
-        classification_result = self.fpn_classifier(holographic_vector)
+        #分類結果
+        classification_result = self.classifier_head(holographic_vector)
         
-        return classification_result, fused_features
+        projected_feature = self.projection_head(holographic_vector)
+        projected_feature = F.normalize(projected_feature, p=2, dim=1)
+        
+        return classification_result, fused_features, projected_feature
     
 if __name__ == "__main__":
     config = load_config("config.yaml")
@@ -165,10 +169,11 @@ if __name__ == "__main__":
     
     test_input = torch.randn(config['train']['batch_size'], 3, 224, 224)
     
-    output_class, output_feature = model(test_input)
+    output_class, output_feature, output_proj = model(test_input)
     
     print(f"輸入維度 : {test_input.shape}")
     print(f"輸出維度 : {output_class.shape} (Batch Size, 類別數)")
+    print(f"對比投影維度 : {output_proj.shape} (Batch Size, 空間維度)")
     print("特徵圖輸出維度 : ")
     for layer, f_map in output_feature.items():
         print(f" {layer} 維度 : {f_map.shape}")
