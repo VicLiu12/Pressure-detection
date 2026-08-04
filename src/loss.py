@@ -89,6 +89,20 @@ class OrdinalSupConLoss(nn.Module):
         level_diff = torch.abs(sample_levels.view(-1, 1) - sample_levels.view(1, -1))
         distance_weight = torch.ones_like(level_diff) + (1.0 - mask) * level_diff
         
+        #設定帶有加權的Log-Softmax
+        exp_logits = torch.exp(logits) * logits_mask * distance_weight
+        log_prob = logits - torch.log(exp_logits.sum(1, keepdim = True) + 1e-12)
+        
+        mask_sum = mask.sum(1)
+        mask_sum = torch.where(mask_sum == 0, torch.ones_like(mask_sum), mask_sum)
+        
+        mean_log_prob_pos = (mask * log_prob).sum(1) / mask_sum
+        
+        loss = -mean_log_prob_pos.mean()
+        return loss
+        
+        
+        
         
 
 
