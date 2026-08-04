@@ -140,6 +140,8 @@ def train_model():
         #Train process
         model.train()
         runnning_loss = 0.0
+        running_cls_loss = 0.0
+        running_con_loss = 0.0
         
         current_lr = optimizer.param_groups[0]['lr']
         
@@ -239,7 +241,7 @@ def train_model():
 
     #Validation Accuracy curve
     plt.subplot(1, 3, 3)
-    plt.plot(range(1, epoch + 1), history_val_acc, marker = 's', color = 'green', label = 'Validation Accuracy ')
+    plt.plot(range(1, epochs + 1), history_val_acc, marker = 's', color = 'green', label = 'Validation Accuracy ')
     plt.title('Validation Accuracy Over Epochs', fontsize=14, fontweight='bold')
     plt.xlabel('Epoch', fontsize = 12)
     plt.ylabel('Accuracy (%)', fontsize = 12)
