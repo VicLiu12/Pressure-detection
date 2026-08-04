@@ -230,6 +230,7 @@ weights/
 saved_models/
 checkpoints/
 history_detect_images/
+evaluation_results/
 
 runs/
 logs/
