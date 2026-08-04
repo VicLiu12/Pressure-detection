@@ -13,7 +13,7 @@ class Grad_CAM:
         self.model.eval()
         
     def generate_cam(self, input_image, target_layer):
-        output_class, fused_features = self.model(input_image)
+        output_class, _,fused_features = self.model(input_image)
         backbone_layer_name = target_layer.replace('p', 'layer')
         
         target_feature = self.model.feature_map[backbone_layer_name]
@@ -45,7 +45,7 @@ class Grad_CAM:
     
 
 
-def Multi_Feature_Image(image_tensor, feature_dicts):
+def Multi_Feature_Image(image_tensor, model):
     img_np = image_tensor[0].permute(1, 2, 0).detach().numpy()
     
     img_np = (img_np - img_np.min()) / (img_np.max() - img_np.min() + 1e-5)
