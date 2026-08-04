@@ -12,7 +12,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from model import DetectModel, load_config
 from dataset import build_dataloaders
-from loss import Loss_function
+from loss import JoinLoss
 from visualize import Grad_CAM
 
 
@@ -114,7 +114,7 @@ def train_model():
     model = DetectModel(config).to(device)
     
     #Focal Loss 損失函數 & 優化器
-    criterion = Loss_function(alpha = 1.0, gamma = 2.0).to(device)
+    criterion = JoinLoss(alpha = 1.0, gamma = 2.0, lambda_con = 0.5).to(device)
     optimizer = optim.Adam(model.parameters(), lr = config['train']['learning_rate'])
     
     epochs = config['train']['epochs']
@@ -132,6 +132,8 @@ def train_model():
     
     history_train_loss = []
     history_val_acc = []
+    history_cls_loss = []
+    history_con_loss = []
     
     for epoch in range(1, epochs + 1):
         
@@ -150,8 +152,8 @@ def train_model():
         for step, (images, labels) in enumerate(train_bar):
             images, labels = images.to(device), labels.to(device)
             
-            outputs, _ = model(images)
-            loss = criterion(outputs, labels)
+            class_out, proj_out, _ = model(images)
+            loss, cls_loss, con_loss = criterion(class_out, proj_out, labels)
             
             loss = loss / accumulation_steps
             
@@ -163,18 +165,26 @@ def train_model():
                 
                 optimizer.first_step(zero_grad = True)
                 
-                outputs_2, _ = model(images)
-                loss_2 = criterion(outputs_2, labels)
+                class_out_2, proj_out_2, _ = model(images)
+                loss_2, _, _ = criterion(class_out_2, proj_out_2, labels)
                 loss_2 = loss_2 / accumulation_steps
                 loss_2.backward()
                 
                 optimizer.second_step(zero_grad = True)
                 
             runnning_loss += loss.item() * accumulation_steps
-            train_bar.set_postfix({'Loss' : f"{runnning_loss / (step + 1):.4f}"})
+            running_cls_loss += cls_loss.item()
+            running_con_loss += con_loss.iten()
+            
+            train_bar.set_postfix({
+                'Total' : f"{runnning_loss / (step + 1):.4f}",
+                'Cls' : f"{running_cls_loss / (step + 1):.4f}",
+                'Con' : f"{running_con_loss / (step + 1):.4f}"
+            })
 
-        epoch_train_loss = runnning_loss / len(train_loader)
-        history_train_loss.append(epoch_train_loss)
+        history_train_loss.append(runnning_loss / len(train_loader)) 
+        history_cls_loss.append(running_cls_loss / len(train_loader))
+        history_con_loss.append(running_con_loss / len(train_loader))
         
         #Validation process 
         model.eval()
@@ -185,6 +195,7 @@ def train_model():
             val_bar = tqdm(val_loader, total = len(val_loader), desc = f"Epoch {epoch}/{epochs} [Val]")
             for images, labels in val_bar:
                 images, labels = images.to(device), labels.to(device)
+                
                 outputs, _ = model(images)
                 _, predicted = torch.max(outputs.data, 1)
                 val_total += labels.size(0)
@@ -204,20 +215,30 @@ def train_model():
         save_image(model, track_image, epoch, track_dir)
         scheduler.step()
             
-    plt.figure(figsize = (14, 5))
+    plt.figure(figsize = (18, 5))
 
 
     #Train Loss curve
-    plt.subplot(1, 2, 1)
+    plt.subplot(1, 3, 1)
     plt.plot(range(1, epochs + 1), history_train_loss, marker = 'o', color = 'blue', label = 'Train Loss ')
-    plt.title('Training Loss Over Epochs', fontsize = 14, fontweight = 'bold')
+    plt.title('Total Training Loss', fontsize = 14, fontweight = 'bold')
     plt.xlabel('Epoch', fontsize = 12)
     plt.ylabel('Loss', fontsize = 12)
     plt.grid(True, linestyle = '--', alpha = 0.7)
     plt.legend()
+    
+    #Loss Comparison curve
+    plt.subplot(1, 3, 2)
+    plt.plot(range(1, epochs + 1), history_cls_loss, marker = '^', color = 'darkorange', label = 'Classification Loss')
+    plt.plot(range(1, epochs + 1), history_con_loss, marker = 'd', color = 'purple', label = 'Ordinal SupCon Loss')
+    plt.title('Loss Components Breakdown', fontsize = 14, fontweight = 'bold')
+    plt.xlabel('Epoch', fontsize = 12)
+    plt.ylabel('Loss Value', fontsize = 12)
+    plt.grid(True, linestyle = '--', alpha = 0.7)
+    plt.legend()
 
     #Validation Accuracy curve
-    plt.subplot(1, 2, 2)
+    plt.subplot(1, 3, 3)
     plt.plot(range(1, epoch + 1), history_val_acc, marker = 's', color = 'green', label = 'Validation Accuracy ')
     plt.title('Validation Accuracy Over Epochs', fontsize=14, fontweight='bold')
     plt.xlabel('Epoch', fontsize = 12)
