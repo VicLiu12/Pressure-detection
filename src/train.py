@@ -198,7 +198,7 @@ def train_model():
             for images, labels in val_bar:
                 images, labels = images.to(device), labels.to(device)
                 
-                outputs, _ = model(images)
+                outputs, _, _ = model(images)
                 _, predicted = torch.max(outputs.data, 1)
                 val_total += labels.size(0)
                 val_correct += (predicted == labels).sum().item()

@@ -36,7 +36,7 @@ def evaluate_model():
         val_bar = tqdm(val_loader, desc = "Val_Progress")
         for images, labels in val_bar:
             images, labels = images.to(device), labels.to(device)
-            outputs, _ = model(images)
+            outputs, _, _ = model(images)
             _, predicted = torch.max(outputs.data, 1)
             
             all_preds.extend(predicted.cpu().numpy())
