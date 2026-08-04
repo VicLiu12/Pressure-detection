@@ -136,6 +136,6 @@ if __name__ == "__main__":
     
     print(f"Total loss : {total_loss.item():.4f}")
     print(f"-Cls loss : {cls_loss.item():.4f}")
-    print(f"-Con loss : {con_loss.iten():.4f}")
+    print(f"-Con loss : {con_loss.item():.4f}")
         
 
