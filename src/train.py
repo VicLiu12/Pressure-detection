@@ -9,6 +9,8 @@ import cv2
 import numpy as np
 import os
 from torch.optim.lr_scheduler import CosineAnnealingLR
+import seaborn as sns
+from sklearn.metrics import confusion_matrix, classification_report
 
 from model import DetectModel, load_config
 from dataset import build_dataloaders
@@ -87,6 +89,61 @@ def save_image(model,image_tansor, epoch, save_dir):
     
     plt.savefig(save_dir / f"epoch_{epoch:03d}.png")
     plt.close(fig)
+    
+def evaluate_model(model, val_loader, device, class_names, base_dir):
+    print("\n")
+    print("\n")
+    
+    config = load_config("config.yaml")
+    base_dir = Path(__file__).resolve().parent.parent
+    data_path = base_dir / config['system']['data_dir']
+    weights_path = base_dir / "weights" / "best_model.path"
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Model weights : {weights_path}")
+        
+    _, val_loader, class_names = build_dataloaders(
+        image_dir = str(data_path),
+        batch_size = 32,
+        val_split = 0.2
+    )
+    
+    model.eval()
+    all_preds = []
+    all_labels = []
+    
+    with torch.no_grad():
+        val_bar = tqdm(val_loader, desc = "Val_Progress")
+        for images, labels in val_bar:
+            images, labels = images.to(device), labels.to(device)
+            outputs, _, _ = model(images)
+            _, predicted = torch.max(outputs.data, 1)
+                
+            all_preds.extend(predicted.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+    
+    print("\n")
+    report = classification_report(all_labels, all_preds, target_names = class_names, digits = 4)
+    print(report)
+    
+    cm = confusion_matrix(all_labels, all_preds)
+    plt.figure(figsize = (10, 8))
+    sns.heatmap(cm, 
+                annot = True, fmt = "d", 
+                cmap = "Blues",
+                xticklabels = class_names, yticklabels = class_names
+        )
+    plt.title("Confusion Matrix of Pressure Ulcer Classification", fontsize=16, fontweight='bold')
+    plt.ylabel("Clinical Grade", fontsize = 12)
+    plt.xlabel("Predicted Grade", fontsize = 12)
+    plt.tight_layout()
+
+    save_dir = base_dir / "evaluation_results"
+    save_dir.mkdir(exist_ok=True)
+    cm_save_path = save_dir / "confusion_matrix.png"
+    plt.savefig(cm_save_path, dpi = 400)
+    plt.close()
+
 
 
 def train_model():
@@ -254,6 +311,8 @@ def train_model():
     curve_save_path = eval_dir / "learning_curve.png"
     plt.savefig(curve_save_path, dpi = 400)
     plt.close()
+    
+    evaluate_model(model, val_loader, device, class_names, base_dir)
         
         
 if __name__ == "__main__":
