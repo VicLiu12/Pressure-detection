@@ -11,9 +11,6 @@ from dataset import build_dataloaders
 
 
 def tsne_image(model, val_loader, device, class_names, base_dir, perplexity = 30):
-    print("\n")
-    print("\n")
-    
     model.eval()
     all_features = []
     all_labels = []
@@ -38,7 +35,7 @@ def tsne_image(model, val_loader, device, class_names, base_dir, perplexity = 30
     tsne = TSNE(
         n_components = 2,
         perplexity = perplexity,
-        n_iter = 1500,
+        max_iter = 1500,
         random_state = 42,
         init = 'pca',
         learning_rate = 'auto'
@@ -58,10 +55,10 @@ def tsne_image(model, val_loader, device, class_names, base_dir, perplexity = 30
         edgecolor = 'none'
     )
     
-    plt.title("t-SNE / UMAP Latent Space Clusters", fontsize = 16, fontewight = 'bold', pad = 15)
+    plt.title("t-SNE / UMAP Latent Space Clusters", fontsize = 16, fontweight = 'bold', pad = 15)
     plt.xlabel("t-SNE Dimension 1", fontsize = 12)
     plt.ylabel("t-SNE Dimension 2", fontsize = 12)
-    plt.legend(title = "Cinical Grade", bbox_to_anchor = (1.02, 1), loc = 'upper left', borderaxespad = 0., fontsize = 11)
+    plt.legend(title = "Clinical Grade", bbox_to_anchor = (1.02, 1), loc = 'upper left', borderaxespad = 0., fontsize = 11)
     plt.grid(True, linestyle = '--', alpha = 0.4)
     plt.tight_layout()
     
