@@ -16,6 +16,7 @@ from model import DetectModel, load_config
 from dataset import build_dataloaders
 from loss import JoinLoss
 from visualize import Grad_CAM
+from v_tsne import tsne_image
 
 
 class SAM(torch.optim.Optimizer):
@@ -309,7 +310,13 @@ def train_model():
     plt.savefig(curve_save_path, dpi = 400)
     plt.close()
     
+    #更新記憶體中的best_model.pth
+    weights_path = base_dir / "weights" / "best_model.pth"
+    if weights_path.exists():
+        model.load_state_dict(torch.load(weights_path, map_location = device))
+    
     evaluate_model(model, val_loader, device, class_names, base_dir)
+    tsne_image(model, val_loader, device, class_names, base_dir)
         
         
 if __name__ == "__main__":
