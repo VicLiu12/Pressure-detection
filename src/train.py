@@ -97,16 +97,15 @@ def evaluate_model(model, val_loader, device, class_names, base_dir):
     config = load_config("config.yaml")
     base_dir = Path(__file__).resolve().parent.parent
     data_path = base_dir / config['system']['data_dir']
-    weights_path = base_dir / "weights" / "best_model.path"
+    weights_path = base_dir / "weights" / "best_model.pth"
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Model weights : {weights_path}")
         
-    _, val_loader, class_names = build_dataloaders(
-        image_dir = str(data_path),
-        batch_size = 32,
-        val_split = 0.2
-    )
+    if weights_path.exists():
+        model.load_state_dict(torch.load(weights_path, map_location=device))
+    else:
+        print("Can't find best_model.pth")
     
     model.eval()
     all_preds = []
@@ -205,7 +204,7 @@ def train_model():
         train_bar = tqdm(
             train_loader, 
             total = len(train_loader), 
-            desc = f"Epoch {epoch}/{epochs} [Train, LR: {current_lr:.1e}]]"
+            desc = f"Epoch {epoch}/{epochs} [Train, LR: {current_lr:.1e}]"
         )
         
         for step, (images, labels) in enumerate(train_bar):
