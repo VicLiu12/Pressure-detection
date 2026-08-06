@@ -94,12 +94,10 @@ def evaluate_model(model, val_loader, device, class_names, base_dir):
     print("\n")
     print("\n")
     
-    config = load_config("config.yaml")
-    base_dir = Path(__file__).resolve().parent.parent
-    data_path = base_dir / config['system']['data_dir']
     weights_path = base_dir / "weights" / "best_model.pth"
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"{device}")
     print(f"Model weights : {weights_path}")
         
     if weights_path.exists():
