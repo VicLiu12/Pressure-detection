@@ -6,6 +6,9 @@ from pathlib import Path
 from sklearn.manifold import TSNE
 from tqdm import tqdm
 
+from model import DetectModel, load_config
+from dataset import build_dataloaders
+
 
 def tsne_image(model, val_loader, device, class_names, base_dir, perplexity = 30):
     print("\n")
@@ -24,7 +27,7 @@ def tsne_image(model, val_loader, device, class_names, base_dir, perplexity = 30
             
             #將特徵從GPU移至CPU並轉為NumPy陣列
             all_features.append(proj_out.cpu().numpy())
-            all_labels.extend(labels.numpys())
+            all_labels.extend(labels.numpy())
     
     #合併所有Batch的特徵        
     all_features = np.vstack(all_features)
@@ -48,17 +51,17 @@ def tsne_image(model, val_loader, device, class_names, base_dir, perplexity = 30
         x = tsne_coords[:, 0],
         y = tsne_coords[:, 1],
         hue = [class_names[i] for i in all_labels],
-        hur_order = class_names,
+        hue_order = class_names,
         palette = "tab10",
         s = 70,
         alpha = 0.85,
-        edgcolor = 'none'
+        edgecolor = 'none'
     )
     
     plt.title("t-SNE / UMAP Latent Space Clusters", fontsize = 16, fontewight = 'bold', pad = 15)
     plt.xlabel("t-SNE Dimension 1", fontsize = 12)
     plt.ylabel("t-SNE Dimension 2", fontsize = 12)
-    plt.legend(title = "Cinical Grade", bbox_to_anchor = (1.02, 1), loc = 'upper left', borderaxepad = 0, fontsize = 11)
+    plt.legend(title = "Cinical Grade", bbox_to_anchor = (1.02, 1), loc = 'upper left', borderaxespad = 0., fontsize = 11)
     plt.grid(True, linestyle = '--', alpha = 0.4)
     plt.tight_layout()
     
@@ -67,5 +70,30 @@ def tsne_image(model, val_loader, device, class_names, base_dir, perplexity = 30
     save_path = save_dir / "tsne_latent_clusters.png"
     plt.savefig(save_path, dpi = 400, bbox_inches = 'tight')
     plt.close()
+
+
+if __name__ == "__main__":
+    config = load_config("config.yaml")
+    base_dir = Path(__file__).resolve().parent.parent
+    data_path = base_dir / config['system']['data_dir']
+    weights_path = base_dir / "weights" / "best_model.pth"
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"{device}")
+    print(f"Model weights : {weights_path}")
+    
+    _, val_loader, class_names = build_dataloaders(
+        image_dir = str(data_path),
+        batch_size = 32,
+        val_split = 0.2
+    )
+    
+    model = DetectModel(config).to(device)
+    if weights_path.exists():
+        model.load_state_dict(torch.load(weights_path, map_location = device))
+    else:
+        print("Can't find best_model.pth")
+        
+    tsne_image(model, val_loader, device, class_names, base_dir, perplexity = 30)
 
 
