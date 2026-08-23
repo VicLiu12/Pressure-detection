@@ -218,6 +218,7 @@ def train_model():
             
             if (step + 1) % accumulation_steps == 0 or (step + 1) == len(train_loader):
                 
+                #梯度裁減 (範數限制在5.0以內)
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm = 5.0)
                 
                 optimizer.first_step(zero_grad = True)
