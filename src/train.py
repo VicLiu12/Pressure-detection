@@ -335,7 +335,7 @@ def train_model():
         model.load_state_dict(torch.load(weights_path, map_location = device))
     
     evaluate_model(model, val_loader, device, class_names, base_dir)
-    tsne_image(model, val_loader, device, class_names, base_dir)
+    tsne_image(model, val_loader, device, class_names, base_dir, perplexity = 30, seed = seed)
         
         
 if __name__ == "__main__":
