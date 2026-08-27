@@ -159,7 +159,7 @@ def set_seed(seed):
 def train_model():
     config = load_config("config.yaml")
     
-    seed = config['system']
+    seed = config['system'].get('seed', 42)
     set_seed(seed)
     print(f"Seed : {seed}")
     
