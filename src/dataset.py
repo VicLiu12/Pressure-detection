@@ -47,7 +47,7 @@ def get_clinical_transform(is_train = True):
             ToTensorV2()
         ])
         
-def build_dataloaders(image_dir, batch_size, val_split = 0.2):
+def build_dataloaders(image_dir, batch_size, val_split = 0.2, seed = 42):
     all_paths = []
     all_labels = []
     classes = sorted(os.listdir(image_dir))
@@ -63,7 +63,7 @@ def build_dataloaders(image_dir, batch_size, val_split = 0.2):
     
     #stratify確保在切割訓練集和驗證集時，兩個資料集中的各類別比例會完全一致
     train_paths, val_paths, train_labels, val_labels = train_test_split(
-        all_paths, all_labels, test_size = val_split, stratify = all_labels, random_state = 42
+        all_paths, all_labels, test_size = val_split, stratify = all_labels, random_state = seed
     )
     print(f"train : {len(train_paths)}, val : {len(val_paths)}")
     
