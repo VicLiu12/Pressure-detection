@@ -11,6 +11,7 @@ import os
 from torch.optim.lr_scheduler import CosineAnnealingLR
 import seaborn as sns
 from sklearn.metrics import confusion_matrix, classification_report
+import random
 
 from model import DetectModel, load_config
 from dataset import build_dataloaders
@@ -143,9 +144,25 @@ def evaluate_model(model, val_loader, device, class_names, base_dir):
     plt.close()
 
 
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+
 
 def train_model():
     config = load_config("config.yaml")
+    
+    seed = config['system']
+    set_seed(seed)
+    print(f"Seed : {seed}")
+    
     base_dir = Path(__file__).resolve().parent.parent
     data_path = base_dir / config['system']['data_dir']
     
@@ -157,7 +174,8 @@ def train_model():
     train_loader, val_loader, class_names = build_dataloaders(
         image_dir=str(data_path),
         batch_size=config['train']['batch_size'],
-        val_split=0.2
+        val_split=0.2,
+        seed = seed
     )
     
     track_images, _ = next(iter(val_loader))
