@@ -1,6 +1,6 @@
 # Pressure-detection
 Develop in process
-/n
+
 Architecture Diagram
 
 <p align = "center">
