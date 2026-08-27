@@ -10,7 +10,7 @@ from model import DetectModel, load_config
 from dataset import build_dataloaders
 
 
-def tsne_image(model, val_loader, device, class_names, base_dir, perplexity = 30):
+def tsne_image(model, val_loader, device, class_names, base_dir, perplexity = 30, seed = 42):
     model.eval()
     all_features = []
     all_labels = []
@@ -36,7 +36,7 @@ def tsne_image(model, val_loader, device, class_names, base_dir, perplexity = 30
         n_components = 2,
         perplexity = perplexity,
         max_iter = 1500,
-        random_state = 42,
+        random_state = seed,
         init = 'pca',
         learning_rate = 'auto'
     )
@@ -71,6 +71,9 @@ def tsne_image(model, val_loader, device, class_names, base_dir, perplexity = 30
 
 if __name__ == "__main__":
     config = load_config("config.yaml")
+    
+    seed = config['system'].get('seed', 42)
+    
     base_dir = Path(__file__).resolve().parent.parent
     data_path = base_dir / config['system']['data_dir']
     weights_path = base_dir / "weights" / "best_model.pth"
@@ -82,7 +85,8 @@ if __name__ == "__main__":
     _, val_loader, class_names = build_dataloaders(
         image_dir = str(data_path),
         batch_size = 32,
-        val_split = 0.2
+        val_split = 0.2,
+        seed = seed
     )
     
     model = DetectModel(config).to(device)
@@ -91,6 +95,6 @@ if __name__ == "__main__":
     else:
         print("Can't find best_model.pth")
         
-    tsne_image(model, val_loader, device, class_names, base_dir, perplexity = 30)
+    tsne_image(model, val_loader, device, class_names, base_dir, perplexity = 30, seed = seed)
 
 
