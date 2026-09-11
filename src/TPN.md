@@ -20,6 +20,7 @@ class Cost_Focal_Loss(nn.Module):
             [8.0, 4.0, 6.0, 3.0, 1.5, 1.0, 1.5],
             [8.0, 3.0, 6.0, 4.0, 1.5, 1.5, 1.0] 
         ]
+        
         self.register_buffer("prior_matrix", torch.tensor(prior_matrix, dtype = torch.float32))
         self.dynamic_matrix = nn.Parameter(torch.tensor(prior_matrix, dtype = torch.float32))
         
