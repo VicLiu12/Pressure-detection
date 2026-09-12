@@ -207,6 +207,7 @@ def train_model():
     history_val_acc = []
     history_cls_loss = []
     history_con_loss = []
+    history_uni_loss = []
     
     for epoch in range(1, epochs + 1):
         
@@ -252,7 +253,7 @@ def train_model():
             runnning_loss += loss.item() * accumulation_steps
             running_cls_loss += cls_loss.item()
             running_con_loss += con_loss.item()
-            running_uni_loss += uni_loss.itrm()
+            running_uni_loss += uni_loss.item()
             
             train_bar.set_postfix({
                 'Total' : f"{runnning_loss / (step + 1):.4f}",
@@ -264,6 +265,7 @@ def train_model():
         history_train_loss.append(runnning_loss / len(train_loader)) 
         history_cls_loss.append(running_cls_loss / len(train_loader))
         history_con_loss.append(running_con_loss / len(train_loader))
+        history_uni_loss.append(running_uni_loss / len(train_loader))
         
         #Validation process 
         model.eval()
@@ -310,6 +312,7 @@ def train_model():
     plt.subplot(1, 3, 2)
     plt.plot(range(1, epochs + 1), history_cls_loss, marker = '^', color = 'darkorange', label = 'Classification Loss')
     plt.plot(range(1, epochs + 1), history_con_loss, marker = 'd', color = 'purple', label = 'Ordinal SupCon Loss')
+    plt.plot(range(1, epochs + 1), history_uni_loss, marker = 'x', color = 'red', label = 'Unmodal Loss')
     plt.title('Loss Components Breakdown', fontsize = 14, fontweight = 'bold')
     plt.xlabel('Epoch', fontsize = 12)
     plt.ylabel('Loss Value', fontsize = 12)
