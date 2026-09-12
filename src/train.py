@@ -215,6 +215,7 @@ def train_model():
         runnning_loss = 0.0
         running_cls_loss = 0.0
         running_con_loss = 0.0
+        running_uni_loss = 0.0
         
         current_lr = optimizer.param_groups[0]['lr']
         
@@ -228,7 +229,7 @@ def train_model():
             images, labels = images.to(device), labels.to(device)
             
             class_out, _ , proj_out = model(images)
-            loss, cls_loss, con_loss = criterion(class_out, proj_out, labels)
+            loss, cls_loss, con_loss, uni_loss = criterion(class_out, proj_out, labels)
             
             loss = loss / accumulation_steps
             
@@ -242,7 +243,7 @@ def train_model():
                 optimizer.first_step(zero_grad = True)
                 
                 class_out_2, _, proj_out_2 = model(images)
-                loss_2, _, _ = criterion(class_out_2, proj_out_2, labels)
+                loss_2, _, _, _ = criterion(class_out_2, proj_out_2, labels)
                 loss_2 = loss_2 / accumulation_steps
                 loss_2.backward()
                 
@@ -251,11 +252,13 @@ def train_model():
             runnning_loss += loss.item() * accumulation_steps
             running_cls_loss += cls_loss.item()
             running_con_loss += con_loss.item()
+            running_uni_loss += uni_loss.itrm()
             
             train_bar.set_postfix({
                 'Total' : f"{runnning_loss / (step + 1):.4f}",
                 'Cls' : f"{running_cls_loss / (step + 1):.4f}",
-                'Con' : f"{running_con_loss / (step + 1):.4f}"
+                'Con' : f"{running_con_loss / (step + 1):.4f}",
+                'Uni' : f"{running_uni_loss / (step + 1):.4f}"
             })
 
         history_train_loss.append(runnning_loss / len(train_loader)) 
