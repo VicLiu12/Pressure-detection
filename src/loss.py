@@ -131,11 +131,14 @@ class UninodalRegressionLoss(nn.Module):
 
         
 class JoinLoss(nn.Module):
-    def __init__(self, alpha = 0, gamma = 2.0, l2_reg = 0.1, lambda_con = 0.5, temperature = 0.07):
+    def __init__(self, alpha = 0, gamma = 2.0, l2_reg = 0.1, lambda_con = 0.5, temperature = 0.07, lambda_uni = 1.0):
         super(JoinLoss, self).__init__()
         self.cls_closs_fn = Cost_Focal_Loss(alpha = alpha, gamma=gamma, l2_reg = l2_reg)
         self.con_loss_fn = OrdinalSupConLoss(temperature=temperature)
+        self.uni_loss_fn = UninodalRegressionLoss()
+
         self.lambda_con = lambda_con
+        self.lambda_uni = lambda_uni
         
     def forward(self, classification_result, projected_feature, targets):
         #計算分類誤判損失
@@ -143,11 +146,17 @@ class JoinLoss(nn.Module):
         
         #計算序數對比損失
         con_loss = self.con_loss_fn(projected_feature, targets)
+
+        #單峰正規化
+        uni_loss = self.uni_loss_fn(classification_result, targets)
         
-        total_loss = cls_loss + self.lambda_con * con_loss
+        total_loss = cls_loss + (self.lambda_con * con_loss) + (self.lambda_uni * uni_loss)
         
-        return total_loss, cls_loss, con_loss
-    
+        return total_loss, cls_loss, con_loss, uni_loss
+
+
+
+
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
@@ -157,14 +166,15 @@ if __name__ == "__main__":
         
     mock_class_out = torch.randn(batch_size, num_classes,requires_grad = True).to(device)
     mock_proj_out = F.normalize(torch.randn(batch_size, latent_dim, requires_grad = True), p = 2, dim=1).to(device)
-    mock_targets = torch.randint(0, num_classes, ( batch_size,)).to(device)
+    mock_targets = torch.randint(0, num_classes, (batch_size,)).to(device)
         
     criterion = JoinLoss(lambda_con = 0.5).to(device)
     
-    total_loss, cls_loss, con_loss = criterion(mock_class_out, mock_proj_out, mock_targets)
+    total_loss, cls_loss, con_loss, uni_loss = criterion(mock_class_out, mock_proj_out, mock_targets)
     
     print(f"Total loss : {total_loss.item():.4f}")
     print(f"-Cls loss : {cls_loss.item():.4f}")
     print(f"-Con loss : {con_loss.item():.4f}")
+    print(f"-Uni loss : {uni_loss.item():.4f}")
         
 
