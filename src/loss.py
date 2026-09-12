@@ -100,6 +100,35 @@ class OrdinalSupConLoss(nn.Module):
         
         loss = -mean_log_prob_pos.mean()
         return loss
+
+
+class UninodalRegressionLoss(nn.Module):
+    def __init__(self):
+        super(UninodalRegressionLoss, self).__init__()
+
+    def forward(self, logits, targets):
+        probs = F.softmax(logits, dim = 1)
+        batch_size, num_classes = probs.shape
+        device = probs.device
+
+        #計算相鄰類別的差植
+        diff = probs[:, 1:] - probs[:, :-1]
+
+        idx = torch.arange(num_classes, device = device).unsqueeze(0).expand(batch_size, -1)
+        true_class = targets.unsqueeze(1)
+
+        #真實類別左側 : 機率遞增
+        left_mask = (idx[:, 1:] <= true_class).float()
+        left_penalty = F.relu(-diff) * left_mask
+
+        #真實類別右側 : 機率遞減
+        right_mask = (idx[:, :-1] >= true_class).float()
+        right_penalty = F.relu(diff) * right_mask
+
+
+        loss = (left_penalty + right_penalty).sum(dim=1).mean()
+        return loss
+
         
 class JoinLoss(nn.Module):
     def __init__(self, alpha = 0, gamma = 2.0, l2_reg = 0.1, lambda_con = 0.5, temperature = 0.07):
