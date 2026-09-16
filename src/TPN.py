@@ -1,123 +1,189 @@
+import yaml
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
-from scipy.spatial.distance import squareform, pdist
-from scipy.optimize import linprog
+from torchvision import models
+from pathlib import Path
 
-class Cost_Focal_Loss(nn.Module):
-    def __init__(self, alpha=1.0, gamma=2.0, l2_reg=0.1):
-        super(Cost_Focal_Loss, self).__init__()
-        self.alpha = alpha
-        self.gamma = gamma
-        self.l2_reg = l2_reg
-
-        prior_matrix = [
-            [1.0, 5.0, 2.0, 3.0, 4.0, 5.0, 5.0], 
-            [6.0, 1.0, 4.0, 3.0, 3.0, 4.0, 3.0], 
-            [2.0, 3.0, 1.0, 1.5, 3.0, 5.0, 4.0], 
-            [4.0, 2.0, 5.0, 1.0, 1.5, 3.0, 3.0], 
-            [6.0, 3.0, 4.0, 1.5, 1.0, 1.5, 1.5], 
-            [8.0, 4.0, 6.0, 3.0, 1.5, 1.0, 1.5], 
-            [8.0, 3.0, 6.0, 4.0, 1.5, 1.5, 1.0]  
-        ]
-        self.register_buffer("prior_matrix", torch.tensor(prior_matrix, dtype=torch.float32))
-        self.dynamic_matrix = nn.Parameter(torch.tensor(prior_matrix, dtype=torch.float32))
-        
-    def forward(self, inputs, targets):
-        ce_loss = F.cross_entropy(inputs, targets, reduction='none')
-        pt = torch.exp(-ce_loss)
-        focal_loss = self.alpha * (1 - pt) ** self.gamma * ce_loss
-        probs = F.softmax(inputs, dim=1)
-        targets_costs = self.dynamic_matrix[targets]
-        expected_costs = torch.sum(probs * targets_costs, dim=1)
-        weighted_loss = focal_loss * expected_costs
-        final_loss = weighted_loss.mean()
-        reg_loss = self.l2_reg * torch.norm(self.dynamic_matrix - self.prior_matrix)
-        return final_loss + reg_loss
+def load_config(config_name="config.yaml"):
+    base_dir = Path(__file__).resolve().parent.parent
+    config_path = base_dir / config_name
     
-class OrdinalSupConLoss(nn.Module):
-    def __init__(self, temperature=0.07):
-        super(OrdinalSupConLoss, self).__init__()
-        self.temperature = temperature
-        ordinal_levels = [0.0, 3.5, 1.0, 2.0, 3.0, 4.0, 3.5]
-        self.register_buffer("ordinal_levels", torch.tensor(ordinal_levels, dtype=torch.float32))
-        
-    def forward(self, feature, labels):
-        device = feature.device
-        batch_size = feature.shape[0]
-        sim_matrix = torch.matmul(feature, feature.T) / self.temperature
-        sim_matrix_max, _ = torch.max(sim_matrix, dim=1, keepdim=True)
-        logits = sim_matrix - sim_matrix_max.detach()
-        labels = labels.view(-1, 1)
-        mask = torch.eq(labels, labels.T).float().to(device)
-        logits_mask = torch.scatter(
-            torch.ones_like(mask), 1, torch.arange(batch_size).view(-1, 1).to(device), 0
-        )
-        mask = mask * logits_mask
-        sample_levels = self.ordinal_levels[labels.squeeze()]
-        level_diff = torch.abs(sample_levels.view(-1, 1) - sample_levels.view(1, -1))
-        distance_weight = torch.ones_like(level_diff) + (1.0 - mask) * level_diff
-        exp_logits = torch.exp(logits) * logits_mask * distance_weight
-        log_prob = logits - torch.log(exp_logits.sum(1, keepdim=True) + 1e-12)
-        mask_sum = mask.sum(1)
-        mask_sum = torch.where(mask_sum == 0, torch.ones_like(mask_sum), mask_sum)
-        mean_log_prob_pos = (mask * log_prob).sum(1) / mask_sum
-        loss = -mean_log_prob_pos.mean()
-        return loss
+    with open(config_path, "r", encoding="utf-8") as file:
+        return yaml.safe_load(file)
 
 # --------------------------------------------------------
-# Wasserstein 單峰投影演算法 (線性規劃)
+# 引入 CoordAtt 的非線性激活函數 h_swish
 # --------------------------------------------------------
-def unimodal_wasserstein(p, mode):
-    # 確保機率總和為 1，避免浮點數誤差導致線性規劃無解
-    p = p / np.sum(p)
-    K = p.size
-    C = squareform(pdist(np.arange(K)[:, None]))
-    Ap = [([0]*i + [1] + [0]*(K-i-1))*K for i in range(K)]
-    Ai = [[0]*i*K + [1]*K + [-1]*K + [0]*(K-i-2)*K if i < mode else
-          [0]*i*K + [-1]*K + [1]*K + [0]*(K-i-2)*K for i in range(K-1)]
+class h_swish(nn.Module):
+    def forward(self, x):
+        return x * F.relu6(x + 3.0, inplace=True) / 6.0
+
+# --------------------------------------------------------
+# 進階版 Coordinate Attention (結合 Mean 與 Max 分支)
+# --------------------------------------------------------
+class CoordAttMeanMax(nn.Module):
+    def __init__(self, inp, reduction=32):
+        super(CoordAttMeanMax, self).__init__()
+        # 降維比例，避免參數量過大，最低保留 8 個 Channel
+        mip = max(8, inp // reduction)
+
+        # X 軸與 Y 軸的平均與最大池化
+        self.pool_h_avg = nn.AdaptiveAvgPool2d((None, 1))
+        self.pool_h_max = nn.AdaptiveMaxPool2d((None, 1))
+        self.pool_w_avg = nn.AdaptiveAvgPool2d((1, None))
+        self.pool_w_max = nn.AdaptiveMaxPool2d((1, None))
+
+        # 共享的 1x1 卷積層進行特徵壓縮
+        self.conv1 = nn.Conv2d(inp, mip, kernel_size=1, stride=1, padding=0)
+        self.bn1 = nn.BatchNorm2d(mip)
+        self.act = h_swish()
+        
+        # 分別生成 X 軸與 Y 軸注意力權重的卷積層
+        self.conv_h = nn.Conv2d(mip, inp, kernel_size=1, stride=1, padding=0)
+        self.conv_w = nn.Conv2d(mip, inp, kernel_size=1, stride=1, padding=0)
+
+    def forward(self, x):
+        identity = x
+        n, c, h, w = x.size()
+        
+        # 1. 垂直方向 (H) 池化：Mean + Max
+        x_h_avg = self.pool_h_avg(x)
+        x_h_max = self.pool_h_max(x)
+        x_h = x_h_avg + x_h_max  # Shape: (N, C, H, 1)
+        
+        # 2. 水平方向 (W) 池化：Mean + Max
+        x_w_avg = self.pool_w_avg(x)
+        x_w_max = self.pool_w_max(x)
+        x_w = x_w_avg + x_w_max  # Shape: (N, C, 1, W)
+        
+        # 3. 空間維度拼接 (Concatenate) 並進行 1x1 卷積特徵轉換
+        # 注意：需要把 W 方向的張量轉置才能和 H 方向拼接
+        y = torch.cat([x_h, x_w.transpose(2, 3)], dim=2) # Shape: (N, C, H+W, 1)
+        y = self.conv1(y)
+        y = self.bn1(y)
+        y = self.act(y) 
+        
+        # 4. 將特徵切分回 H 與 W 方向
+        x_h, x_w = torch.split(y, [h, w], dim=2)
+        x_w = x_w.transpose(2, 3)
+        
+        # 5. 透過 Sigmoid 函數產生最終的座標注意力權重 (0 ~ 1)
+        a_h = torch.sigmoid(self.conv_h(x_h))
+        a_w = torch.sigmoid(self.conv_w(x_w))
+
+        # 6. 將權重乘回原始特徵
+        return identity * a_h * a_w
+       
     
-    # 使用 highs 演算法加速求解
-    result = linprog(C.ravel(), A_ub=Ai, b_ub=np.zeros(K-1), A_eq=Ap, b_eq=p, bounds=(0, None), method='highs')
-    T = result.x.reshape(K, K)
-    return (T*C).sum(), T.sum(1)
+class DetectModel(nn.Module):
+    def __init__(self, config):
+        super(DetectModel, self).__init__()
+        
+        model_name = config['model']['name']
+        num_classes = config['system']['num_classes']
+        pretrained = config['model']['pretrained']
+        
+        self.feature_map = {}
+        
+        if model_name == "resnet50" :
+            weights = models.ResNet50_Weights.DEFAULT if pretrained else None
+            self.backbone = models.resnet50(weights=weights)
+            self.backbone.fc = nn.Identity()
+            
+            # 註冊攔截器
+            self.backbone.layer1.register_forward_hook(self.get_hook('layer1'))
+            self.backbone.layer2.register_forward_hook(self.get_hook('layer2'))
+            self.backbone.layer3.register_forward_hook(self.get_hook('layer3'))
+            self.backbone.layer4.register_forward_hook(self.get_hook('layer4'))
+            
+            # 🌟 將原本的 CBAM 替換為 CoordAttMeanMax
+            self.coordatt4 = CoordAttMeanMax(2048)
+            self.coordatt3 = CoordAttMeanMax(1024)
+            self.coordatt2 = CoordAttMeanMax(512)
+            self.coordatt1 = CoordAttMeanMax(256)
+            
+            # FPN 轉換
+            self.fpn_latlayer4 = nn.Conv2d(2048, 256, kernel_size=1)
+            self.fpn_latlayer3 = nn.Conv2d(1024, 256, kernel_size=1)
+            self.fpn_latlayer2 = nn.Conv2d(512, 256, kernel_size=1)
+            self.fpn_latlayer1 = nn.Conv2d(256, 256, kernel_size=1)
+            
+            self.global_pool = nn.AdaptiveAvgPool2d(1)
+            
+            self.holographic_dim = 1024
+            # 特徵分類頭
+            self.classifier_head = nn.Linear(self.holographic_dim, num_classes)
+            
+            # 階層對比頭
+            self.projection_head = nn.Sequential(
+                nn.Linear(self.holographic_dim, 512),
+                nn.BatchNorm1d(512),
+                nn.ReLU(inplace=True),
+                nn.Linear(512, 128)
+            )
+        else :
+            raise ValueError("Model ERROR")
 
-class WassersteinRegularizationLoss(nn.Module):
-    def __init__(self):
-        super(WassersteinRegularizationLoss, self).__init__()
+    def get_hook(self, layer_name):
+        def hook_fn(module, input, output):
+            self.feature_map[layer_name] = output
+        return hook_fn
 
-    def forward(self, logits, targets):
-        probs = F.softmax(logits, dim=1)
-        probs_log = F.log_softmax(logits, dim=1)
-        device = logits.device
+    # FPN (Feature Pyramid Network)    
+    def forward(self, x):      
+        _ = self.backbone(x)
         
-        target_unimodal = []
-        # 將 Tensor 轉至 CPU 進行 scipy 線性規劃運算 (效能瓶頸所在)
-        for phat, y in zip(probs.cpu().detach().numpy(), targets.cpu().numpy()):
-            _, closest_dist = unimodal_wasserstein(phat, y)
-            target_unimodal.append(torch.tensor(closest_dist, dtype=torch.float32, device=device))
+        # 🌟 透過 CoordAtt 過濾 Backbone 提取的特徵
+        c4 = self.coordatt4(self.feature_map['layer4'])
+        c3 = self.coordatt3(self.feature_map['layer3'])
+        c2 = self.coordatt2(self.feature_map['layer2'])
+        c1 = self.coordatt1(self.feature_map['layer1'])
         
-        target_unimodal = torch.stack(target_unimodal)
+        p4 = self.fpn_latlayer4(c4)
+        p4_upsampled = F.interpolate(p4, size=c3.shape[2:], mode='bilinear', align_corners=False)
         
-        # 使用 KL 散度計算當前分佈與線性規劃求得的最理想單峰分佈差距
-        uni_loss = torch.sum(F.kl_div(probs_log, target_unimodal, reduction='none'), dim=1).mean()
-        return uni_loss
-
-class JoinLoss(nn.Module):
-    def __init__(self, alpha=0, gamma=2.0, l2_reg=0.1, lambda_con=0.5, temperature=0.07, lambda_uni=1.0):
-        super(JoinLoss, self).__init__()
-        self.cls_closs_fn = Cost_Focal_Loss(alpha=alpha, gamma=gamma, l2_reg=l2_reg)
-        self.con_loss_fn = OrdinalSupConLoss(temperature=temperature)
-        self.uni_loss_fn = WassersteinRegularizationLoss()
-
-        self.lambda_con = lambda_con
-        self.lambda_uni = lambda_uni
+        p3 = self.fpn_latlayer3(c3) + p4_upsampled
+        p3_upsampled = F.interpolate(p3, size=c2.shape[2:], mode='bilinear', align_corners=False)
         
-    def forward(self, classification_result, projected_feature, targets):
-        cls_loss = self.cls_closs_fn(classification_result, targets)
-        con_loss = self.con_loss_fn(projected_feature, targets)
-        uni_loss = self.uni_loss_fn(classification_result, targets)
+        p2 = self.fpn_latlayer2(c2) + p3_upsampled
+        p2_upsampled = F.interpolate(p2, size=c1.shape[2:], mode='bilinear', align_corners=False)
         
-        total_loss = cls_loss + (self.lambda_con * con_loss) + (self.lambda_uni * uni_loss)
-        return total_loss, cls_loss, con_loss, uni_loss
+        p1 = self.fpn_latlayer1(c1) + p2_upsampled
+        
+        fused_features = {
+            'p4' : p4,
+            'p3' : p3,
+            'p2' : p2,
+            'p1' : p1
+        }
+        
+        pool_p4 = self.global_pool(p4).flatten(1)
+        pool_p3 = self.global_pool(p3).flatten(1)
+        pool_p2 = self.global_pool(p2).flatten(1)
+        pool_p1 = self.global_pool(p1).flatten(1)
+        
+        holographic_vector = torch.cat([pool_p4, pool_p3, pool_p2, pool_p1], dim=1)
+        
+        # 分類結果與對比空間投影
+        classification_result = self.classifier_head(holographic_vector)
+        projected_feature = self.projection_head(holographic_vector)
+        projected_feature = F.normalize(projected_feature, p=2, dim=1)
+        
+        return classification_result, fused_features, projected_feature
+    
+if __name__ == "__main__":
+    config = load_config("config.yaml")
+    
+    model = DetectModel(config)
+    print(f"載入模型 : {config['model']['name']}")
+    
+    test_input = torch.randn(config['train']['batch_size'], 3, 224, 224)
+    output_class, output_feature, output_proj = model(test_input)
+    
+    print(f"輸入維度 : {test_input.shape}")
+    print(f"輸出維度 : {output_class.shape} (Batch Size, 類別數)")
+    print(f"對比投影維度 : {output_proj.shape} (Batch Size, 空間維度)")
+    print("特徵圖輸出維度 : ")
+    for layer, f_map in output_feature.items():
+        print(f" {layer} 維度 : {f_map.shape}")

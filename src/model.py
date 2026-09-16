@@ -11,6 +11,13 @@ def load_config(config_name = "config.yaml"):
     
     with open(config_path, "r", encoding="utf-8") as file:
         return yaml.safe_load(file)
+
+
+# CoordAtt 非線性激活函數
+class h_swish(nn.Module):
+    def forward(self, x):
+        return x * F.relu6(x + 3.0, inplace=True) / 6.0
+    
     
 #尋找大部分特徵
 class ChannelAttention(nn.Module):
