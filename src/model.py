@@ -138,6 +138,7 @@ class DetectModel(nn.Module):
             self.fpn_latlayer2 = nn.Conv2d(512, 256, kernel_size=1)
             self.fpn_latlayer1 = nn.Conv2d(256, 256, kernel_size=1)
             
+            
             self.fpn_dcn4 = DeformableConvBlock(256, 256)
             self.fpn_dcn3 = DeformableConvBlock(256, 256)
             self.fpn_dcn2 = DeformableConvBlock(256, 256)
@@ -178,15 +179,19 @@ class DetectModel(nn.Module):
         c1 = self.coordatt1(self.feature_map['layer1'])
         
         p4 = self.fpn_latlayer4(c4)
+        p4 = self.fpn_dcn4(p4)
         p4_upsampled = F.interpolate(p4, size = c3.shape[2:], mode = 'bilinear', align_corners = False)
         
         p3 = self.fpn_latlayer3(c3) + p4_upsampled
+        p3 = self.fpn_dcn3(p3)
         p3_upsampled = F.interpolate(p3, size = c2.shape[2:], mode = 'bilinear', align_corners = False)
         
         p2 = self.fpn_latlayer2(c2) + p3_upsampled
+        p2 = self.fpn_dcn2(p2)
         p2_upsampled = F.interpolate(p2, size = c1.shape[2:], mode = 'bilinear', align_corners = False)
         
         p1 = self.fpn_latlayer1(c1) + p2_upsampled
+        p1 = self.fpn_dcn1(p1)
         
         fused_features = {
             'p4' : p4,
