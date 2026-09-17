@@ -72,6 +72,7 @@ class DeformableConvBlock(nn.Module):
         self.offset_conv = nn.Conv2d(
             in_channels,
             3 * kernel_size * kernel_size,
+            kernel_size = kernel_size,
             padding = padding,
             stride = stride
         )
