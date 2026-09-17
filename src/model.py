@@ -25,9 +25,9 @@ class CoordAttMeanMax(nn.Module):
         mip = max(8, inp // reduction)
         
         self.pool_h_avg = nn.AdaptiveAvgPool2d((None, 1))
-        self.pool_h_max = nn.AdaptiveAvgPool2d((None, 1))
+        self.pool_h_max = nn.AdaptiveMaxPool2d((None, 1))
         self.pool_w_avg = nn.AdaptiveAvgPool2d((1, None))
-        self.pool_w_max = nn.AdaptiveAvgPool2d((1, None))
+        self.pool_w_max = nn.AdaptiveMaxPool2d((1, None))
         
         self.conv1 = nn.Conv2d(inp, mip, kernel_size=1, stride=1, padding=0)
         self.bn1 = nn.BatchNorm2d(mip)
@@ -49,7 +49,7 @@ class CoordAttMeanMax(nn.Module):
         x_w_max = self.pool_w_max(x)
         x_w = x_w_avg + x_w_max
         
-        y = torch.cat([x_h, x_w.transpose], dim = 2)
+        y = torch.cat([x_h, x_w.transpose(2, 3)], dim = 2)
         y = self.conv1(y)
         y = self.bn1(y)
         y = self.act(y)
