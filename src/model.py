@@ -18,54 +18,50 @@ class h_swish(nn.Module):
     def forward(self, x):
         return x * F.relu6(x + 3.0, inplace=True) / 6.0
     
-    
-#尋找大部分特徵
-class ChannelAttention(nn.Module):
-    def __init__(self, in_planes, ratio = 16):
-        super(ChannelAttention, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1) #全局平均池化
-        self.max_pool = nn.AdaptiveMaxPool2d(1) #最大池化
-        
-        self.fc = nn.Sequential(
-            nn.Conv2d(in_planes, in_planes // ratio, 1, bias = False),
-            nn.ReLU(),
-            nn.Conv2d(in_planes // ratio, in_planes, 1, bias = False) #1x1的卷積核
-        )
-        self.sigmoid = nn.Sigmoid()
-        
-    def forward(self, x):
-        avg_out = self.fc(self.avg_pool(x))
-        max_out = self.fc(self.max_pool(x))
-        out = avg_out + max_out
-        return self.sigmoid(out)  #透過sigmoid函數轉為0~1的權重
-    
 
-#尋找特定特徵
-class SpatialAttention(nn.Module):
-    def __init__(self, kernel_size = 7):  #7x7的卷積核
-        super(SpatialAttention, self).__init__()
-        padding = 3 if kernel_size == 7 else 1
-        self.conv1 = nn.Conv2d(2, 1, kernel_size, padding = padding, bias = False)
-        self.sigmiod = nn.Sigmoid()
+class CoordAttMeanMax(nn.Module):
+    def __init__(self, inp, reduction = 32):
+        super(CoordAttMeanMax, self).__init__()
+        mip = max(8, inp // reduction)
+        
+        self.pool_h_avg = nn.AdaptiveAvgPool2d((None, 1))
+        self.pool_h_max = nn.AdaptiveAvgPool2d((None, 1))
+        self.pool_w_avg = nn.AdaptiveAvgPool2d((1, None))
+        self.pool_w_max = nn.AdaptiveAvgPool2d((1, None))
+        
+        self.conv1 = nn.Conv2d(inp, mip, kernel_size=1, stride=1, padding=0)
+        self.bn1 = nn.BatchNorm2d(mip)
+        self.act = h_swish()
+        
+        self.conv_h = nn.Conv2d(mip, inp, kernel_size=1, stride=1, padding=0)
+        self.conv_w = nn.Conv2d(mip, inp, kernel_size=1, stride=1, padding=0)
+    
         
     def forward(self, x):
-        avg_out = torch.mean(x, dim = 1, keepdim = True)
-        max_out, _ = torch.max(x, dim = 1, keepdim = True)
-        x = torch.cat([avg_out, max_out], dim = 1)
-        x = self.conv1(x)
-        return self.sigmiod(x)
-    
-    
-class CBAM(nn.Module):
-    def __init__(self, in_planes, ratio = 16, kernel_size = 7):
-        super(CBAM, self).__init__()
-        self.ca = ChannelAttention(in_planes, ratio)
-        self.sa = SpatialAttention(kernel_size)
+        identity = x
+        n, c, h, w = x.size()
         
-    def forward(self, x):
-        x = x * self.ca(x)
-        x = x * self.sa(x)
-        return x
+        x_h_avg = self.pool_h_avg(x)
+        x_h_max = self.pool_h_max(x)
+        x_h = x_h_avg + x_h_max
+        
+        x_w_avg = self.pool_w_avg(x)
+        x_w_max = self.pool_w_max(x)
+        x_w = x_w_avg + x_w_max
+        
+        y = torch.cat([x_h, x_w.transpose], dim = 2)
+        y = self.conv1(y)
+        y = self.bn1(y)
+        y = self.act(y)
+        
+        x_h, x_w = torch.split(y, [h, w], dim=2)
+        x_w = x_w.transpose(2, 3)
+        
+        a_h = torch.sigmoid(self.conv_h(x_h))
+        a_w = torch.sigmoid(self.conv_w(x_w))
+        
+        return identity * a_h * a_w
+        
        
     
 class DetectModel(nn.Module):
@@ -81,7 +77,6 @@ class DetectModel(nn.Module):
         if model_name == "resnet50" :
             weights = models.ResNet50_Weights.DEFAULT if pretrained else None
             self.backbone = models.resnet50(weights = weights)
-            
             self.backbone.fc = nn.Identity()
             
             #註冊攔截器
@@ -90,10 +85,10 @@ class DetectModel(nn.Module):
             self.backbone.layer3.register_forward_hook(self.get_hook('layer3'))
             self.backbone.layer4.register_forward_hook(self.get_hook('layer4'))
             
-            self.cbam4 = CBAM(2048)
-            self.cbam3 = CBAM(1024)
-            self.cbam2 = CBAM(512)
-            self.cbam1 = CBAM(256)
+            self.coordatt4 = CoordAttMeanMax(2048)
+            self.coordatt3 = CoordAttMeanMax(1024)
+            self.coordatt2 = CoordAttMeanMax(512)
+            self.coordatt1 = CoordAttMeanMax(256)
             
             #FPN 轉換
             self.fpn_latlayer4 = nn.Conv2d(2048, 256, kernel_size=1)
@@ -129,10 +124,10 @@ class DetectModel(nn.Module):
     def forward(self, x):      
         _ = self.backbone(x)
         
-        c4 = self.cbam4(self.feature_map['layer4'])
-        c3 = self.cbam3(self.feature_map['layer3'])
-        c2 = self.cbam2(self.feature_map['layer2'])
-        c1 = self.cbam1(self.feature_map['layer1'])
+        c4 = self.coordatt4(self.feature_map['layer4'])
+        c3 = self.coordatt3(self.feature_map['layer3'])
+        c2 = self.coordatt2(self.feature_map['layer2'])
+        c1 = self.coordatt1(self.feature_map['layer1'])
         
         p4 = self.fpn_latlayer4(c4)
         p4_upsampled = F.interpolate(p4, size = c3.shape[2:], mode = 'bilinear', align_corners = False)
