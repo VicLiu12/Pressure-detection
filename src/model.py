@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
 from pathlib import Path
+import torchvision.ops as ops
 
 def load_config(config_name = "config.yaml"):
     base_dir = Path(__file__).resolve().parent.parent
@@ -61,9 +62,50 @@ class CoordAttMeanMax(nn.Module):
         a_w = torch.sigmoid(self.conv_w(x_w))
         
         return identity * a_h * a_w
-        
-       
     
+
+class DeformableConvBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size = 3, padding = 1, stride = 1):
+        super(DeformableConvBlock, self).__init__()
+        
+        #offset_conv預測每個採樣點偏移多少與權重遮罩
+        self.offset_conv = nn.Conv2d(
+            in_channels,
+            3 * kernel_size * kernel_size,
+            padding = padding,
+            stride = stride
+        )
+        
+        nn.init.constant_(self.offset_conv.weight, 0.)
+        nn.init.constant_(self.offset_conv.bias, 0.)
+
+        #Torchvision中的C++優化層
+        self.deform_conv = ops.DeformConv2d(
+            in_channels,
+            out_channels,
+            kernel_size = kernel_size,
+            padding = padding,
+            stride = stride
+        )
+        
+        self.bn = nn.BatchNorm2d(out_channels)
+        self.act = nn.ReLU(inplace = True)
+        
+    def forward(self, x):
+        #預設偏移量
+        out = self.offset_conv(x)
+        o1, o2, mask = torch.chunk(out, 3, dim = 1)
+        offset = torch.cat((o1, o2), dim = 1)
+        mask = torch.sigmoid(mask)
+        
+        #變形卷積
+        x = self.deform_conv(x, offset, mask)
+        x = self.bn(x)
+        x = self.act(x)
+        return x
+                    
+       
+       
 class DetectModel(nn.Module):
     def __init__(self, config):
         super(DetectModel, self).__init__()
@@ -95,6 +137,12 @@ class DetectModel(nn.Module):
             self.fpn_latlayer3 = nn.Conv2d(1024, 256, kernel_size=1)
             self.fpn_latlayer2 = nn.Conv2d(512, 256, kernel_size=1)
             self.fpn_latlayer1 = nn.Conv2d(256, 256, kernel_size=1)
+            
+            self.fpn_dcn4 = DeformableConvBlock(256, 256)
+            self.fpn_dcn3 = DeformableConvBlock(256, 256)
+            self.fpn_dcn2 = DeformableConvBlock(256, 256)
+            self.fpn_dcn1 = DeformableConvBlock(256, 256)
+             
             
             self.global_pool = nn.AdaptiveAvgPool2d(1)
             
