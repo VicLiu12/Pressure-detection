@@ -102,9 +102,9 @@ class OrdinalSupConLoss(nn.Module):
         return loss
 
 
-class UninodalRegressionLoss(nn.Module):
+class UnimodalRegressionLoss(nn.Module):
     def __init__(self):
-        super(UninodalRegressionLoss, self).__init__()
+        super(UnimodalRegressionLoss, self).__init__()
 
     def forward(self, logits, targets):
         probs = F.softmax(logits, dim = 1)
@@ -135,7 +135,7 @@ class JoinLoss(nn.Module):
         super(JoinLoss, self).__init__()
         self.cls_closs_fn = Cost_Focal_Loss(alpha = alpha, gamma=gamma, l2_reg = l2_reg)
         self.con_loss_fn = OrdinalSupConLoss(temperature=temperature)
-        self.uni_loss_fn = UninodalRegressionLoss()
+        self.uni_loss_fn = UnimodalRegressionLoss()
 
         self.lambda_con = lambda_con
         self.lambda_uni = lambda_uni
