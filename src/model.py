@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from torchvision import models
 from pathlib import Path
 import torchvision.ops as ops
+import timm
 
 def load_config(config_name = "config.yaml"):
     base_dir = Path(__file__).resolve().parent.parent
@@ -117,27 +118,19 @@ class DetectModel(nn.Module):
         
         self.feature_map = {}
         
-        if model_name == "resnet50" :
-            weights = models.ResNet50_Weights.DEFAULT if pretrained else None
-            self.backbone = models.resnet50(weights = weights)
-            self.backbone.fc = nn.Identity()
+        if model_name == "convnextv2_tiny" :
+            self.backbone = timm.create_model('convnextv2_tiny', pretrained = pretrained, features_only = True)
             
-            #註冊攔截器
-            self.backbone.layer1.register_forward_hook(self.get_hook('layer1'))
-            self.backbone.layer2.register_forward_hook(self.get_hook('layer2'))
-            self.backbone.layer3.register_forward_hook(self.get_hook('layer3'))
-            self.backbone.layer4.register_forward_hook(self.get_hook('layer4'))
-            
-            self.coordatt4 = CoordAttMeanMax(2048)
-            self.coordatt3 = CoordAttMeanMax(1024)
-            self.coordatt2 = CoordAttMeanMax(512)
-            self.coordatt1 = CoordAttMeanMax(256)
+            self.coordatt4 = CoordAttMeanMax(768)
+            self.coordatt3 = CoordAttMeanMax(384)
+            self.coordatt2 = CoordAttMeanMax(192)
+            self.coordatt1 = CoordAttMeanMax(96)
             
             #FPN 轉換
-            self.fpn_latlayer4 = nn.Conv2d(2048, 256, kernel_size=1)
-            self.fpn_latlayer3 = nn.Conv2d(1024, 256, kernel_size=1)
-            self.fpn_latlayer2 = nn.Conv2d(512, 256, kernel_size=1)
-            self.fpn_latlayer1 = nn.Conv2d(256, 256, kernel_size=1)
+            self.fpn_latlayer4 = nn.Conv2d(768, 256, kernel_size=1)
+            self.fpn_latlayer3 = nn.Conv2d(384, 256, kernel_size=1)
+            self.fpn_latlayer2 = nn.Conv2d(192, 256, kernel_size=1)
+            self.fpn_latlayer1 = nn.Conv2d(96, 256, kernel_size=1)
             
             
             self.fpn_dcn4 = DeformableConvBlock(256, 256)
@@ -163,21 +156,15 @@ class DetectModel(nn.Module):
         else :
             raise ValueError("Model ERROR")
 
-    #取得layer1~layer4過程的特徵圖提取出來
-    def get_hook(self, layer_name):
-        def hook_fn(module, input, output):
-            self.feature_map[layer_name] = output
-        return hook_fn
-
-
-    #FPN (Feature Pyramid Network)    
+  
     def forward(self, x):      
-        _ = self.backbone(x)
+        features = self.backbone(x)
+        f1, f2, f3, f4 = features[0], features[1], features[2], features[3]
         
-        c4 = self.coordatt4(self.feature_map['layer4'])
-        c3 = self.coordatt3(self.feature_map['layer3'])
-        c2 = self.coordatt2(self.feature_map['layer2'])
-        c1 = self.coordatt1(self.feature_map['layer1'])
+        c4 = self.coordatt4(f4)
+        c3 = self.coordatt3(f3)
+        c2 = self.coordatt2(f2)
+        c1 = self.coordatt1(f1)
         
         p4 = self.fpn_latlayer4(c4)
         p4 = self.fpn_dcn4(p4)
@@ -211,7 +198,7 @@ class DetectModel(nn.Module):
         
         #分類結果
         classification_result = self.classifier_head(holographic_vector)
-        
+
         projected_feature = self.projection_head(holographic_vector)
         projected_feature = F.normalize(projected_feature, p=2, dim=1)
         
@@ -219,6 +206,7 @@ class DetectModel(nn.Module):
     
 if __name__ == "__main__":
     config = load_config("config.yaml")
+    config['model']['name'] = 'ConvNeXtv2_tiny'
     
     model = DetectModel(config)
     print(f"載入模型 : {config['model']['name']}")
