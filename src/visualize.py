@@ -14,9 +14,8 @@ class Grad_CAM:
         
     def generate_cam(self, input_image, target_layer):
         output_class, _,fused_features = self.model(input_image)
-        backbone_layer_name = target_layer.replace('p', 'layer')
         
-        target_feature = self.model.feature_map[backbone_layer_name]
+        target_feature = fused_features[target_class]
         
         target_feature.retain_grad()
         
