@@ -15,7 +15,7 @@ class Grad_CAM:
     def generate_cam(self, input_image, target_layer):
         output_class, _,fused_features = self.model(input_image)
         
-        target_feature = fused_features[target_class]
+        target_feature = fused_features[target_layer]
         
         target_feature.retain_grad()
         
