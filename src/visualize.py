@@ -13,7 +13,7 @@ class Grad_CAM:
         self.model.eval()
         
     def generate_cam(self, input_image, target_layer):
-        output_class, _,fused_features = self.model(input_image)
+        output_class, fused_features, _ = self.model(input_image)
         
         target_feature = fused_features[target_layer]
         
