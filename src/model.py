@@ -206,7 +206,7 @@ class DetectModel(nn.Module):
     
 if __name__ == "__main__":
     config = load_config("config.yaml")
-    config['model']['name'] = 'ConvNeXtv2_tiny'
+    config['model']['name'] = 'convnextv2_tiny'
     
     model = DetectModel(config)
     print(f"載入模型 : {config['model']['name']}")

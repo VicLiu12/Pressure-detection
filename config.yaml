@@ -4,7 +4,7 @@ system :
   num_classes : 7 #分類數量
 
 model :
-  name : "resnet50"
+  name : "convnextv2_tiny"
   pretrained : True
 
 train:
