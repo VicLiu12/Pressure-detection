@@ -161,10 +161,10 @@ class DetectModel(nn.Module):
         features = self.backbone(x)
         f1, f2, f3, f4 = features[0], features[1], features[2], features[3]
         
-        c4 = self.coordatt4(f4)
-        c3 = self.coordatt3(f3)
-        c2 = self.coordatt2(f2)
-        c1 = self.coordatt1(f1)
+        c4 = f4
+        c3 = f3
+        c2 = f2
+        c1 = f1
         
         p4 = self.fpn_latlayer4(c4)
         p4 = self.fpn_dcn4(p4)
