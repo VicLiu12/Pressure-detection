@@ -193,10 +193,11 @@ def train_model():
     epochs = config['train']['epochs']
     print(f"Accumulation_steps : {accumulation_steps}")
     
-    base_optimizer = torch.optim.Adam
+    base_optimizer = torch.optim.AdamW
     optimizer = SAM(model.parameters(), 
                     base_optimizer, 
-                    lr = config['train']['learning_rate']
+                    lr = config['train']['learning_rate'],
+                    wegiht_decay = 1e-2
                 )
     
     scheduler = CosineAnnealingLR(optimizer.base_optimizer, T_max = epochs, eta_min = 1e-6)
