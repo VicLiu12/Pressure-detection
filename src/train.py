@@ -197,7 +197,7 @@ def train_model():
     optimizer = SAM(model.parameters(), 
                     base_optimizer, 
                     lr = config['train']['learning_rate'],
-                    wegiht_decay = 1e-2
+                    weight_decay = 1e-2
                 )
 
     warmup_epochs = 5
