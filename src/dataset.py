@@ -43,7 +43,8 @@ def get_clinical_transform(is_train = True):
             A.VerticalFlip(p = 0.5),
             A.ShiftScaleRotate(shift_limit = 0.1, scale_limit = 0.15, rotate_limit = 45, p = 0.5),
             
-            A.RandomBrightnessContrast(p = 0.5),   #隨機亮度對比 、隨機色相/飽和度/透明度
+            #隨機亮度對比 、隨機色相/飽和度/透明度
+            A.RandomBrightnessContrast(p = 0.5), 
             A.HueSaturationValue(hue_shift_limit = 10, sat_shift_limit = 20, val_shift_limit = 10, p = 0.5),
             ToTensorV2()
         ])
