@@ -188,10 +188,17 @@ def train_model():
     
     #Focal Loss 損失函數 & 優化器
     criterion = JoinLoss(alpha = 1.0, gamma = 2.0, lambda_con = 0.5).to(device)
-    optimizer = optim.Adam(model.parameters(), lr = config['train']['learning_rate'])
     
     epochs = config['train']['epochs']
     print(f"Accumulation_steps : {accumulation_steps}")
+    
+    base_lr = config['train']['learning_rate']
+    backbone_lr = base_lr * 0.1
+    
+    param_groups = [
+        {'param':model.backbone.parameters(), 'lr':backbone_lr}
+        
+    ]
     
     base_optimizer = torch.optim.AdamW
     optimizer = SAM(model.parameters(), 
