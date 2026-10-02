@@ -196,14 +196,23 @@ def train_model():
     backbone_lr = base_lr * 0.1
     
     param_groups = [
-        {'param':model.backbone.parameters(), 'lr':backbone_lr}
-        
+        {'param':model.backbone.parameters(), 'lr':backbone_lr},
+        {'param':model.fpn_latlayer4.parameters(), 'lr':base_lr},
+        {'param':model.fpn_latlayer3.parameters(), 'lr':base_lr},
+        {'param':model.fpn_latlayer2.parameters(), 'lr':base_lr},
+        {'param':model.fpn_latlayer1.parameters(), 'lr':base_lr},
+        {'param':model.fpn_dcn4.parameters(), 'lr':base_lr},
+        {'param':model.fpn_dcn3.parameters(), 'lr':base_lr},
+        {'param':model.fpn_dcn2.parameters(), 'lr':base_lr},
+        {'param':model.fpn_dcn1.parameters(), 'lr':base_lr},
+        {'param':model.classifier_head.parameters(), 'lr':base_lr},
+        {'param':model.projection_head.parameters(), 'lr':base_lr}
     ]
     
     base_optimizer = torch.optim.AdamW
-    optimizer = SAM(model.parameters(), 
+    optimizer = SAM(param_groups, 
                     base_optimizer, 
-                    lr = config['train']['learning_rate'],
+                    lr = base_lr,
                     weight_decay = 1e-2
                 )
 
