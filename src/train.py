@@ -196,17 +196,17 @@ def train_model():
     backbone_lr = base_lr * 0.1
     
     param_groups = [
-        {'param':model.backbone.parameters(), 'lr':backbone_lr},
-        {'param':model.fpn_latlayer4.parameters(), 'lr':base_lr},
-        {'param':model.fpn_latlayer3.parameters(), 'lr':base_lr},
-        {'param':model.fpn_latlayer2.parameters(), 'lr':base_lr},
-        {'param':model.fpn_latlayer1.parameters(), 'lr':base_lr},
-        {'param':model.fpn_dcn4.parameters(), 'lr':base_lr},
-        {'param':model.fpn_dcn3.parameters(), 'lr':base_lr},
-        {'param':model.fpn_dcn2.parameters(), 'lr':base_lr},
-        {'param':model.fpn_dcn1.parameters(), 'lr':base_lr},
-        {'param':model.classifier_head.parameters(), 'lr':base_lr},
-        {'param':model.projection_head.parameters(), 'lr':base_lr}
+        {'params':model.backbone.parameters(), 'lr':backbone_lr},
+        {'params':model.fpn_latlayer4.parameters(), 'lr':base_lr},
+        {'params':model.fpn_latlayer3.parameters(), 'lr':base_lr},
+        {'params':model.fpn_latlayer2.parameters(), 'lr':base_lr},
+        {'params':model.fpn_latlayer1.parameters(), 'lr':base_lr},
+        {'params':model.fpn_dcn4.parameters(), 'lr':base_lr},
+        {'params':model.fpn_dcn3.parameters(), 'lr':base_lr},
+        {'params':model.fpn_dcn2.parameters(), 'lr':base_lr},
+        {'params':model.fpn_dcn1.parameters(), 'lr':base_lr},
+        {'params':model.classifier_head.parameters(), 'lr':base_lr},
+        {'params':model.projection_head.parameters(), 'lr':base_lr}
     ]
     
     base_optimizer = torch.optim.AdamW
@@ -238,7 +238,7 @@ def train_model():
         running_con_loss = 0.0
         running_uni_loss = 0.0
         
-        current_lr = optimizer.param_groups[0]['lr']
+        current_lr = optimizer.param_groups[1]['lr']
         
         train_bar = tqdm(
             train_loader, 
