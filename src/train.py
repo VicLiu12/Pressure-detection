@@ -187,7 +187,7 @@ def train_model():
     model = DetectModel(config).to(device)
     
     #Focal Loss 損失函數 & 優化器
-    criterion = JoinLoss(alpha = 1.0, gamma = 2.0, lambda_con = 0.5).to(device)
+    criterion = JoinLoss(alpha = 1.0, gamma = 2.0, lambda_con = 1.0, lambda_uni = 3.0).to(device)
     
     epochs = config['train']['epochs']
     print(f"Accumulation_steps : {accumulation_steps}")
