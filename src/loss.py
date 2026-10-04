@@ -15,12 +15,12 @@ class Cost_Focal_Loss(nn.Module):
         #[Invalid, SDTI, Stage_I, Stage_II, Stage_III, Stage_IV, Unstageable]
         prior_matrix = [
             [1.0, 5.0, 2.0, 3.0, 4.0, 5.0, 5.0], #Invalid
-            [6.0, 1.0, 4.0, 3.0, 3.0, 4.0, 3.0], #SDTI
+            [6.0, 1.0, 5.0, 4.0, 2.0, 2.0, 2.0], #SDTI
             [2.0, 3.0, 1.0, 1.5, 3.0, 5.0, 4.0], #Stage_I
-            [4.0, 2.0, 5.0, 1.0, 1.5, 3.0, 3.0], #Stage_II
-            [6.0, 3.0, 4.0, 1.5, 1.0, 1.5, 1.5], #Stage_III
-            [8.0, 4.0, 6.0, 3.0, 1.5, 1.0, 1.5], #Stage_IV
-            [8.0, 3.0, 6.0, 4.0, 1.5, 1.5, 1.0]  #Unstageble
+            [4.0, 2.0, 4.0, 1.0, 1.5, 3.0, 3.0], #Stage_II
+            [6.0, 2.0, 5.0, 3.0, 1.0, 1.5, 1.5], #Stage_III
+            [8.0, 2.0, 6.0, 5.0, 4.5, 1.0, 1.5], #Stage_IV
+            [8.0, 2.0, 6.0, 5.0, 1.5, 1.5, 1.0]  #Unstageble
         ]
 
         #將Prior Matrix作為固定參考，不會餐與梯度更新
@@ -58,7 +58,7 @@ class OrdinalSupConLoss(nn.Module):
         
         #不同分類的相互推開的力度
         #[Ivalid, SDTI, StageI, StageII, StageIII, StageIV, Unstageable]
-        ordinal_levels = [0.0, 3.5, 1.0, 2.0, 3.0, 4.5, 3.5]
+        ordinal_levels = [0.0, 4.5, 1.0, 2.0, 3.0, 5.0, 4.0]
         self.register_buffer("ordinal_levels", torch.tensor(ordinal_levels, dtype = torch.float32))
         
     def forward(self, feature, labels):
