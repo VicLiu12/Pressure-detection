@@ -218,7 +218,7 @@ def train_model():
 
     warmup_epochs = 5
     scheduler1 = LinearLR(optimizer.base_optimizer, start_factor = 0.1, total_iters = warmup_epochs)
-    scheduler2 = CosineAnnealingLR(optimizer.base_optimizer, T_max = epochs, eta_min = 1e-6)
+    scheduler2 = CosineAnnealingLR(optimizer.base_optimizer, T_max = epochs - warmup_epochs, eta_min = 1e-6)
     scheduler = SequentialLR(optimizer.base_optimizer, schedulers=[scheduler1, scheduler2], milestones=[warmup_epochs])
     
     best_val_acc = 0.0
