@@ -11,4 +11,4 @@ train:
   batch_size : 32
   learning_rate : 0.0001
   accumulation_steps : 1 #梯度累積次數
-  epochs : 50
+  epochs : 100
