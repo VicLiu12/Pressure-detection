@@ -58,7 +58,7 @@ class OrdinalSupConLoss(nn.Module):
         
         #不同分類的相互推開的力度
         #[Ivalid, SDTI, StageI, StageII, StageIII, StageIV, Unstageable]
-        ordinal_levels = [0.0, 3.5, 1.0, 2.0, 3.0, 4.0, 3.5]
+        ordinal_levels = [0.0, 3.5, 1.0, 2.0, 3.0, 4.5, 3.5]
         self.register_buffer("ordinal_levels", torch.tensor(ordinal_levels, dtype = torch.float32))
         
     def forward(self, feature, labels):
@@ -131,7 +131,7 @@ class UnimodalRegressionLoss(nn.Module):
 
         
 class JoinLoss(nn.Module):
-    def __init__(self, alpha = 0, gamma = 2.0, l2_reg = 0.1, lambda_con = 0.5, temperature = 0.07, lambda_uni = 1.0):
+    def __init__(self, alpha = 0, gamma = 2.0, l2_reg = 0.1, lambda_con = 1.0, temperature = 0.07, lambda_uni = 3.0):
         super(JoinLoss, self).__init__()
         self.cls_closs_fn = Cost_Focal_Loss(alpha = alpha, gamma=gamma, l2_reg = l2_reg)
         self.con_loss_fn = OrdinalSupConLoss(temperature=temperature)
