@@ -196,16 +196,20 @@ def train_model():
     backbone_lr = base_lr * 0.1
     
     param_groups = [
-        {'params':model.backbone.parameters(), 'lr':backbone_lr},
+        {'params':model.backbone.parameters(), 'lr':backbone_lr}, #ConvNeXt V2本身具備預訓練 -> 較小的學習率
+        #FPN的橫向連接層將各層的通道數量統一壓縮或對齊 -> 較大的學習率
         {'params':model.fpn_latlayer4.parameters(), 'lr':base_lr},
         {'params':model.fpn_latlayer3.parameters(), 'lr':base_lr},
         {'params':model.fpn_latlayer2.parameters(), 'lr':base_lr},
         {'params':model.fpn_latlayer1.parameters(), 'lr':base_lr},
+        #DCN幫助模型對齊不同解析度之前的幾何形變，過程是初始化的 -> 較大的學習率
         {'params':model.fpn_dcn4.parameters(), 'lr':base_lr},
         {'params':model.fpn_dcn3.parameters(), 'lr':base_lr},
         {'params':model.fpn_dcn2.parameters(), 'lr':base_lr},
         {'params':model.fpn_dcn1.parameters(), 'lr':base_lr},
+        #負責將萃取出來的特徵轉換為最終的類別機率輸出
         {'params':model.classifier_head.parameters(), 'lr':base_lr},
+        #將特徵降維並投影到一個專門用來計算特徵幾何距離的子空間中
         {'params':model.projection_head.parameters(), 'lr':base_lr}
     ]
     
