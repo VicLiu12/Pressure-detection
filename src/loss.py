@@ -12,13 +12,14 @@ class Cost_Focal_Loss(nn.Module):
 
 
         #Cost Sensitive Learning & Prior Matrix
+        #橫排:真實類別  直排:預測類別
         #[Invalid, SDTI, Stage_I, Stage_II, Stage_III, Stage_IV, Unstageable]
         prior_matrix = [
             [1.0, 5.0, 2.0, 3.0, 4.0, 5.0, 5.0], #Invalid
             [6.0, 1.0, 5.0, 4.0, 2.0, 2.0, 2.0], #SDTI
             [2.0, 3.0, 1.0, 1.5, 3.0, 5.0, 4.0], #Stage_I
             [4.0, 2.0, 4.0, 1.0, 1.5, 3.0, 3.0], #Stage_II
-            [6.0, 2.0, 5.0, 3.0, 1.0, 1.5, 1.5], #Stage_III
+            [6.0, 2.0, 5.0, 3.0, 1.0, 2.5, 1.5], #Stage_III
             [8.0, 2.0, 6.0, 5.0, 4.5, 1.0, 1.5], #Stage_IV
             [8.0, 2.0, 6.0, 5.0, 1.5, 1.5, 1.0]  #Unstageble
         ]
