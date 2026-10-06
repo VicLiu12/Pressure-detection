@@ -193,10 +193,32 @@ def train_model():
     print(f"Accumulation_steps : {accumulation_steps}")
     
     base_lr = config['train']['learning_rate']
-    backbone_lr = base_lr * 0.1
+
+    gamma = 0.8
+
+    stage4_params = []
+    stage3_params = []
+    stage2_params = []
+    stage1_stem_params = []
+
+    for name, param in model.backbone.named_parameters():
+        if "stages.3" in name:
+            stage4_params.append(param)
+        elif "stages.2" in name:
+            stage3_params.append(param)
+        elif "stages.1" in name:
+            stage2_params.append(param)
+        else:
+            stage1_stem_params.append(param)
+        
     
     param_groups = [
-        {'params':model.backbone.parameters(), 'lr':backbone_lr}, #ConvNeXt V2本身具備預訓練 -> 較小的學習率
+
+        {'params' : stage1_stem_params, 'lr' : base_lr * gamma ** 4},
+        {'params' : stage2_params, 'lr' : base_lr * (gamma ** 3)},
+        {'params' : stage3_params, 'lr' : base_lr * (gamma ** 2)},
+        {'params' : stage4_params, 'lr' : base_lr * (gamma ** 1)},
+
         #FPN的橫向連接層將各層的通道數量統一壓縮或對齊 -> 較大的學習率
         {'params':model.fpn_latlayer4.parameters(), 'lr':base_lr},
         {'params':model.fpn_latlayer3.parameters(), 'lr':base_lr},
