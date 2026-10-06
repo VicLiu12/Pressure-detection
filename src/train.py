@@ -213,7 +213,6 @@ def train_model():
         
     
     param_groups = [
-
         {'params' : stage1_stem_params, 'lr' : base_lr * gamma ** 4},
         {'params' : stage2_params, 'lr' : base_lr * (gamma ** 3)},
         {'params' : stage3_params, 'lr' : base_lr * (gamma ** 2)},
